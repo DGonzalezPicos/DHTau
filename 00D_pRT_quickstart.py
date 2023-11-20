@@ -33,6 +33,9 @@ T_knots = np.array([6000., 2500., 1900., 1400.]) # bottom to top
 knots, coeffs, deg = splrep(logP_knots[sort], np.log10(T_knots[sort]))
 temperature = 10**splev(np.log10(pressure), (knots, coeffs, deg), der=0)
 
+# TODO: Load SPHINX PT-profile
+
+
 # Plot PT-profile (y-axis from bottom to top of the atmosphere)
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(temperature, pressure, color='brown', lw=3.)
@@ -43,6 +46,8 @@ plt.show()
 
 # %% [markdown]
 # ### 2. Chemistry
+
+# TODO: Load SPHINX chemistry (H2O, CO, Na)
 
 # %%
 # Define Volume-Mixing-Ratios (VMRs) of the line-species
@@ -96,10 +101,12 @@ plt.show()
 # %%
 # Define the line-list of each species
 line_lists = {'H2O': 'H2O_pokazatel_main_iso',
-              '12CO': 'CO_main_iso'}
+              '12CO': 'CO_high',
+              'Na':'Na_allard'}
 # rename mass fractions with the line-list names
 mass_fractions['H2O_pokazatel_main_iso'] = mass_fractions.pop('H2O')
-mass_fractions['CO_main_iso'] = mass_fractions.pop('12CO')
+mass_fractions['CO_high'] = mass_fractions.pop('12CO')
+
 
 # %%
 radtrans = Radtrans(line_species=list(line_lists.values()),
@@ -126,6 +133,9 @@ wave = c / (radtrans.freq/1e9) # wavelength in micron
 flux = radtrans.flux * c / (wave **2)
 
 save_spectrum = True
+outdir = pathlib.Path('data')
+outdir.mkdir(exist_ok=True)
+
 if save_spectrum:
     # save output as .npy file
     np.save('data/prt_spectrum.npy', np.array([wave, flux]).T)
