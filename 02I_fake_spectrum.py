@@ -53,7 +53,6 @@ err = np.random.normal(0, mean_err, size=wave_crires.size)
 # synthetic observed spectrum
 flux_syn = flux_LSF + np.random.normal(0, mean_err, size=wave_crires.size)
 
-
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(wave_crires, flux_syn/np.mean(flux_syn), color='black', lw=2)
 ax.set(xlabel='Wavelengt [micron]', ylabel='Flux [erg s^-1 cm^-3]',
