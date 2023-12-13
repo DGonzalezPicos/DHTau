@@ -6,6 +6,9 @@ import petitRADTRANS.nat_cst as nc
 from parameters import Parameters
 from spectrum import DataSpectrum, ModelSpectrum
 
+from chemistry import Chemistry
+from PT_profile import PT
+
 
 class pRT_model:
     
@@ -182,16 +185,8 @@ class pRT_model:
             
             # TODO: get contribution function
             # if get_contr:
-
-            #     # Integrate the emission contribution function and cloud opacity
-            #     self.get_integrated_contr_em_and_opa_cloud(
-            #         atm_i, m_wave_i=wave_i, 
-            #         d_wave_i=self.d_wave[i,:], 
-            #         d_mask_i=self.d_mask_isfinite[i], 
-            #         m_spec_i=m_spec_i, 
-            #         order=i
-            #         )
-
+            
+            
         # Create a new ModelSpectrum instance with all orders
         m_spec = ModelSpectrum(
             wave=wave, 
@@ -214,8 +209,14 @@ class pRT_model:
         return self.mass_fractions
     
     def get_temperature(self, params):
-        #TODO: update this function
-        pass
+        
+        assert hasattr(params, 'log_P_knots'), 'params must have log_P_knots attribute'
+        # Select the temperature knots
+        T_knots = [k for k in params.keys() if k.startswith('T') and len(k)==2]
+        
+        self.PT = PT(self.pressure)
+        self.temperature = self.PT.spline(params['log_P_knots'], T_knots)               
+        return self.temperature
         
         
     
