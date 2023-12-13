@@ -152,10 +152,11 @@ class pRT_model:
             wave_i *= 1e7
 
             # Convert to observation by scaling with planetary radius
-            flux_i *= (
-                (self.params['R_p']*nc.r_jup_mean) / \
-                (1e3/self.params['parallax']*nc.pc)
-                )**2
+            if 'R_p' in self.params.keys() and 'parallax' in self.params.keys():
+                flux_i *= (
+                    (self.params['R_p']*nc.r_jup_mean) / \
+                    (1e3/self.params['parallax']*nc.pc)
+                    )**2
 
             # Create a ModelSpectrum instance
             m_spec_i = ModelSpectrum(
@@ -202,7 +203,12 @@ class pRT_model:
         return m_spec
     
     def get_mass_fractions(self, params):
-        VMRs = {key: 10.0**params[f'log{key}'] for key in self.line_species_dict.keys()}
+        
+        VMRs = {} # {'H2O': (1e-4, 'H2O_pokazatel_main_iso')}
+        for key, value in self.line_species_dict.items():
+            VMRs[key] = (10.0**params[f'log{key}'], value)
+            
+        # VMRs = {key: 10.0**params[f'log{key}'] for key in self.line_species_dict.keys()}
         
         self.chem = Chemistry(self.pressure)
         self.mass_fractions = self.chem(VMRs)
@@ -210,9 +216,11 @@ class pRT_model:
     
     def get_temperature(self, params):
         
-        assert hasattr(params, 'log_P_knots'), 'params must have log_P_knots attribute'
+        # check key in dictionary
+        assert 'log_P_knots' in params.keys(), 'log_P_knots not in params.keys()'
         # Select the temperature knots
-        T_knots = [k for k in params.keys() if k.startswith('T') and len(k)==2]
+        T_knots = [params[k] for k in params.keys() if k.startswith('T') and len(k)==2]
+        print(T_knots)
         
         self.PT = PT(self.pressure)
         self.temperature = self.PT.spline(params['log_P_knots'], T_knots)               
@@ -225,13 +233,14 @@ if __name__=='__main__':
     
     file_data = 'data/crires_example_spectrum.dat'
     d_spec = DataSpectrum(file_target=file_data, slit='w_0.4', flux_units='erg/s/cm2/cm')
+    d_spec.reshape_orders_dets()
     
     free_params = {
         # general properties
         # 'Rp'    : ([0.5, 2.0], r'$R_p$ [R$_J$]'),
         # 'log_g' : ([3.0, 5.5], r'$\log(g)$ [cm/s$^2$]'),
         'vsini' : ([1.0, 20.0], r'$v \sin(i)$ [km/s]'),
-        'RV'    : ([-30.0, 30.0], r'RV [km/s]'),
+        'rv'    : ([-30.0, 30.0], r'RV [km/s]'),
         
         # chemistry
         'log12CO' : ([-12, -2], r'$\log$(CO)'),
@@ -246,8 +255,11 @@ if __name__=='__main__':
     }
 
     constant_params = {
-        'Rp'    : 1.0,
+        'R_p'    : 1.0, # [R_jup]
+        'parallax' : 50., # [mas]
+        'epsilon_limb' : 0.5, # 
         'log_g' : 4.0,
+        'log_P_knots': [-5, -2, 0, 2], # [log(bar)]
     }
     
     cube = np.random.rand(len(free_params))
@@ -260,6 +272,8 @@ if __name__=='__main__':
     line_species_dict = {
         
         'H2O': 'H2O_pokazatel_main_iso',
+        '12CO': 'CO_high',
+        'Na': 'Na_allard',
     }
     pRT = pRT_model(line_species_dict=line_species_dict,
                     d_spec=d_spec,
@@ -272,6 +286,8 @@ if __name__=='__main__':
                     rv_range=(-50,50))
     
 
-    pRT.get_mass_fractions(parameters.params)
-    # m_spec = pRT(mass_fractions, temperature, params, get_contr=False, get_full_spectrum=False)
-    # m_spec = pRT(params, get_contr=False, get_full_spectrum=False)            
+    # Load opacities and prepare a Radtrans instance for every order-detector
+    pRT.get_atmospheres()
+    
+    # Generate a model spectrum for the given parameters
+    m_spec = pRT(parameters.params)

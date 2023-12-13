@@ -28,8 +28,8 @@ class PT:
                 Returns an instance of the PT class (with self.temperature)
         '''
         assert len(log_P_knots) == len(T_knots), 'log_P_knots and T_knots must have the same length'
-        self.log_P_knots = log_P_knots
-        self.T_knots = T_knots
+        self.log_P_knots = np.array(log_P_knots)
+        self.T_knots = np.array(T_knots)
         # Knots for the spline interpolation
         sort = np.argsort(self.log_P_knots) 
 
@@ -39,7 +39,13 @@ class PT:
         # use scipy.interpolated.interp1d
         interp = interp1d(self.log_P_knots[sort], np.log10(self.T_knots[sort]), kind=kind)
         self.temperature = 10**interp(np.log10(self.pressure))
-        return self
+        return self.temperature
+    
+    # def __call__(self, log_P_knots=None, T_knots=None, kind='quadratic',**kwargs):
+    #     self.spline(log_P_knots, T_knots, kind=kind)
+    #     return self.temperature
+        
+        
     
     
     def plot(self, ax=None, **kwargs):
@@ -65,7 +71,7 @@ if __name__=='__main__':
     T_knots = np.array([6000., 2500., 1900., 1400.]) # bottom to top
     pt = PT(pressure)
     
-    pt.spline(log_P_knots, T_knots)
+    temperature = pt.spline(log_P_knots, T_knots)
     pt.plot()
     plt.show()
     

@@ -1,5 +1,5 @@
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 class Chemistry:
     
@@ -15,7 +15,10 @@ class Chemistry:
         
         'HF': (1.00794 + 18.9984032,           (0,0,1)),
         'CN': (12.011 + 14.0067,               (1,0,0)),
+        'H2': (1.00794 * 2.0,                  (0,0,2)),
         # Atomic species
+        'H': (1.00794,                        (0,0,1)),
+        'He': (4.002602,                       (0,0,0)),
         'Na': (22.98976928,                    (0,0,0)),
         'K': (39.0983,                         (0,0,0)),
         'Li': (6.941,                          (0,0,0)),
@@ -49,6 +52,7 @@ class Chemistry:
         
     def __call__(self, VMRs):
         
+        
         self.VMRs = VMRs
 
         # Total VMR without H2, starting with He
@@ -61,11 +65,12 @@ class Chemistry:
         C, O, H = 0, 0, 0
         
         for species_i in list(self.VMRs.keys()):
+            assert species_i in self.species_info.keys(), f'{species_i} not in species_info.keys()'
+            line_species_i = self.VMRs[species_i][-1]
+            VMR_i = self.VMRs[species_i][0] * np.ones_like(self.pressure)
             
-            print(f'  - {species_i}: {self.VMRs[species_i]}')
-            VMR_i = self.VMRs[species_i] * np.ones_like(self.pressure)
-            self.VMRs[species_i] = VMR_i
-            self.mass_fractions[species_i] = VMR_i * self.species_info[species_i][0]
+            # self.VMRs[species_i] = VMR_i
+            self.mass_fractions[line_species_i] = VMR_i * self.species_info[species_i][0]
             VMR_wo_H2 += VMR_i
             
             # Add the number of atoms to the total
@@ -79,8 +84,10 @@ class Chemistry:
         H += self.species_info['H2'][1][2] * (1.0 - VMR_wo_H2)
         self.mass_fractions['H'] = self.species_info['H'][0] * H
         
-        # Mean Molecular Weight
-        MMW = np.sum([self.mass_fractions[key] for key in self.mass_fractions], axis=0)
+        # Mean Molecular Weight        
+        MMW = 0.
+        for mass_i in self.mass_fractions.values():
+            MMW += mass_i
         MMW *= np.ones_like(self.pressure)
         
         # Turn the molecular masses into mass fractions
@@ -103,3 +110,34 @@ class Chemistry:
         self.CH = np.mean(self.CH)
             
         return self.mass_fractions
+    
+    
+    def plot(self, ax=None, **kwargs):
+        if ax is None:
+            fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        for key in self.mass_fractions:
+            if key == 'MMW':
+                continue
+            ax.plot(self.mass_fractions[key], self.pressure, label=key, **kwargs)
+        
+        ax.legend()
+        ax.set(yscale='log', xscale='log', ylim=(self.pressure.max(), self.pressure.min()), 
+               xlabel='Mass Fraction', ylabel='Pressure [bar]')
+        
+        return ax
+    
+    
+if __name__=='__main__':
+    
+    
+    logP_max = 2.0
+    logP_min = -5.0
+    n_layers = 30 # plane-parallel layers
+    pressure = np.logspace(logP_min, logP_max, n_layers) # from top to bottom
+    VMRs = {'H2O_pokazatel_main_iso': 1e-4, 'CO_high': 1e-4, 'Na_allard': 1e-6}
+    
+    chem = Chemistry(pressure)
+    mass_fractions = chem(VMRs)
+    
+    ax = chem.plot()
+    plt.show()
