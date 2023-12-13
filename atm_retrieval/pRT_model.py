@@ -291,3 +291,18 @@ if __name__=='__main__':
     
     # Generate a model spectrum for the given parameters
     m_spec = pRT(parameters.params)
+    
+    # for plotting purposes
+    import matplotlib.pyplot as plt
+    
+    fig, ax = plt.subplots(1, 2, figsize=(8, 6), gridspec_kw={'width_ratios': [3, 1.5]})
+    m_spec.wave = d_spec.wave.flatten()
+    m_spec.flux = m_spec.flux.flatten()
+    m_spec.plot(ax=ax[0])
+    
+    pRT.PT.plot(ax=ax[1])
+    
+    plt.show()
+    
+    # TODO: prior predictive check
+    # --> sample from the edge of the prior and test that does not break

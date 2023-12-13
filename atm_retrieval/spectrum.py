@@ -370,7 +370,7 @@ class DataSpectrum(Spectrum):
     
 
 class ModelSpectrum(Spectrum):
-
+    flux_units = 'erg/s/cm2/cm'
     def __init__(self, 
                  wave, 
                  flux, 
