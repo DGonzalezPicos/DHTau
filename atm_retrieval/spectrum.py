@@ -153,6 +153,21 @@ class Spectrum:
             setattr(self, attr, getattr(self, attr)[mask])
         return self
     
+    def flatten(self, debug=False):
+        assert hasattr(self, 'wave'), 'No wavelength array found'
+        shape_in = self.flux.shape
+        if len(shape_in) == 1:
+            print(f'Flux array already flattened, shape = {shape_in}')
+            return self
+
+        attrs = ['wave', 'flux', 'err', 'mask_isfinite']
+        for attr in attrs:
+            setattr(self, attr, getattr(self, attr).flatten())
+        shape_out = self.flux.shape
+        if debug:
+            print(f'Flux array flattened from {shape_in} to {shape_out}')
+        return self
+    
     
     @classmethod
     def spectrally_weighted_integration(cls, wave, flux, array):
@@ -197,6 +212,34 @@ class Spectrum:
         with open(file, 'rb') as f:
             self = pickle.load(f)
         return self
+    
+    def save(self, file):
+        extension = file.split('.')[-1]
+        supported_extensions = ['pickle', 'txt', 'dat']
+        assert extension in supported_extensions, \
+            f'Extension {extension} not supported, use one of {supported_extensions}'
+     
+        if extension == 'pickle':
+            self.pickle_save(file)
+            
+        elif extension in ['txt', 'dat']:
+            np.savetxt(file, np.array([self.wave, self.flux, self.err]).T)
+        
+        return None
+    
+    def load(self, file):
+        
+        extension = file.split('.')[-1]
+        assert extension in ['pickle', 'txt', 'dat'], \
+            f'Extension {extension} not supported, use one of {supported_extensions}'
+        
+        if extension == 'pickle':
+            self = self.pickle_load(file)
+            
+        elif extension in ['txt', 'dat']:
+            self.wave, self.flux, self.err = np.loadtxt(file).T
+        return self
+
     
 
 class DataSpectrum(Spectrum):
@@ -334,7 +377,7 @@ class DataSpectrum(Spectrum):
         return None
     
     def clip_det_edges(self, n_edge_pixels=30):
-        
+        assert len(np.shape(self.flux)) == 1, 'Only works for 1D arrays'
         # Loop over the orders and detectors
         for i in range(self.n_orders):
             for j in range(self.n_dets):
@@ -347,7 +390,7 @@ class DataSpectrum(Spectrum):
 
         # Update the isfinite mask
         self.update_isfinite_mask()
-        return None
+        return self
     
     def load_molecfit_transm(self, file_transm, tell_threshold=0.0):
 

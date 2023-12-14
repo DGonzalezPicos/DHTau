@@ -1,4 +1,5 @@
 import numpy as np
+import pickle
 
 from petitRADTRANS import Radtrans
 import petitRADTRANS.nat_cst as nc
@@ -13,8 +14,8 @@ from PT_profile import PT
 class pRT_model:
     
     def __init__(self,
-                 line_species_dict, 
-                 d_spec, 
+                 line_species_dict=None, 
+                 d_spec=None, 
                  mode='lbl', 
                  lbl_opacity_sampling=5,  # set to 3 for accuracy, 5 for speed
                  rayleigh_species=['H2', 'He'], 
@@ -24,12 +25,14 @@ class pRT_model:
                  rv_range=(-50,50)):
         
         # Read in attributes of the observed spectrum
-        self.d_wave          = d_spec.wave
-        self.d_mask_isfinite = d_spec.mask_isfinite
-        self.d_resolution    = d_spec.resolution
+        if d_spec is not None:
+            self.d_wave          = d_spec.wave
+            self.d_mask_isfinite = d_spec.mask_isfinite
+            self.d_resolution    = d_spec.resolution
 
         self.line_species_dict = line_species_dict
-        self.line_species = [line_species_dict[key] for key in line_species_dict.keys()]
+        if line_species_dict is not None:
+            self.line_species = [line_species_dict[key] for key in line_species_dict.keys()]
         self.mode = mode
         self.lbl_opacity_sampling = lbl_opacity_sampling
 
@@ -219,14 +222,25 @@ class pRT_model:
         # check key in dictionary
         assert 'log_P_knots' in params.keys(), 'log_P_knots not in params.keys()'
         # Select the temperature knots
-        T_knots = [params[k] for k in params.keys() if k.startswith('T') and len(k)==2]
-        print(T_knots)
+        T_knots_keys = sorted([k for k in params.keys() if k.startswith('T') and len(k)==2])
+        assert T_knots_keys[0] == 'T1'
+        # important to sort them from bottom to top (T1, T2, ...)
+        T_knots = [params[key] for key in T_knots_keys]
         
         self.PT = PT(self.pressure)
         self.temperature = self.PT.spline(params['log_P_knots'], T_knots)               
         return self.temperature
         
         
+    def pickle_save(self, file):
+        with open(file, 'wb') as f:
+            pickle.dump(self, f)
+        return None
+    
+    def pickle_load(self, file):
+        with open(file, 'rb') as f:
+            self = pickle.load(f)
+        return self
     
 if __name__=='__main__':
     
@@ -288,21 +302,7 @@ if __name__=='__main__':
 
     # Load opacities and prepare a Radtrans instance for every order-detector
     pRT.get_atmospheres()
+    pRT.pickle_save('data/testing_atm.pickle')
     
     # Generate a model spectrum for the given parameters
     m_spec = pRT(parameters.params)
-    
-    # for plotting purposes
-    import matplotlib.pyplot as plt
-    
-    fig, ax = plt.subplots(1, 2, figsize=(8, 6), gridspec_kw={'width_ratios': [3, 1.5]})
-    m_spec.wave = d_spec.wave.flatten()
-    m_spec.flux = m_spec.flux.flatten()
-    m_spec.plot(ax=ax[0])
-    
-    pRT.PT.plot(ax=ax[1])
-    
-    plt.show()
-    
-    # TODO: prior predictive check
-    # --> sample from the edge of the prior and test that does not break
