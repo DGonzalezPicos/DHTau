@@ -117,6 +117,7 @@ def prior_predictive_check(parameters, pRT):
     # plot data
     d_spec.flatten() # flatten the data spectrum (7, 3, 2048) -- > (7*3*2048,)
     d_spec.plot(ax=ax[0], color='black', alpha=0.4, label='data')
+    ax[0].fill_between(d_spec.wave, d_spec.flux - d_spec.err, d_spec.flux + d_spec.err, color='black', alpha=0.1)
     
     
     ax[0].legend()

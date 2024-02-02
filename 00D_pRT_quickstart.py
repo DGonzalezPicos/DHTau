@@ -54,19 +54,23 @@ plt.show()
 VMRs = {}
 VMRs['H2O'] = np.ones_like(pressure) * 1e-4
 VMRs['12CO'] = np.ones_like(pressure) * 1.5e-4
+VMRs['Na'] = np.ones_like(pressure) * 1e-6
 VMR_He = np.ones_like(pressure) * 0.1
 VMR_wo_H2 = VMR_He + VMRs['H2O'] + VMRs['12CO']
 
 def vmr_to_mass_fractions(VMRs):
     """Converts VMRs to mass fractions"""
     mass_fractions = {}
-    atomic_mass = dict(H=1.00794, He=4.002602, C=12.0107, O=15.9994)
+    atomic_mass = dict(H=1.00794, He=4.002602, C=12.0107, O=15.9994, Na=22.98976928)
     mass_fractions['H2O'] = VMRs['H2O'] * (atomic_mass['H'] * 2.0 + atomic_mass['O'])
     mass_fractions['12CO'] = VMRs['12CO'] * (atomic_mass['C'] + atomic_mass['O'])
+    mass_fractions['Na'] = VMRs['Na'] * atomic_mass['Na']
+    
     mass_fractions['He'] = VMR_He * atomic_mass['He']
     mass_fractions['H2'] = (1.0 - VMR_wo_H2) * atomic_mass['H'] * 2.0
     mass_fractions['H'] = atomic_mass['H'] * mass_fractions['H2'] + 2. * mass_fractions['H2O']
-
+    mass_fractions['H-'] = 1e-9 * mass_fractions['H']
+    mass_fractions['e-'] = 1e-9 * mass_fractions['H']
     # Mean Molecular Weight
     mass_fractions['MMW'] = np.sum([mass_fractions[key] for key in mass_fractions], axis=0)
     return mass_fractions
@@ -111,7 +115,7 @@ mass_fractions['CO_high'] = mass_fractions.pop('12CO')
 # %%
 radtrans = Radtrans(line_species=list(line_lists.values()),
                     rayleigh_species=['H2', 'He'], 
-                    continuum_opacities=['H2-H2', 'H2-He'],
+                    continuum_opacities=['H2-H2', 'H2-He', 'H-'],
                     mode='lbl',
                     lbl_opacity_sampling=5,
                     wlen_bords_micron=[2.32, 2.37],

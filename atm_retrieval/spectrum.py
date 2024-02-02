@@ -411,6 +411,104 @@ class DataSpectrum(Spectrum):
         self.throughput /= np.nanmax(self.throughput)
         return None
     
+    def sigma_clip_median_filter(self, sigma=3, filter_width=3, 
+                                 replace_flux=True, 
+                                 debug=True,
+                                 ):
+
+        flux_copy = self.flux.copy()
+        sigma_clip_bounds = np.ones((3, self.n_orders, 3*self.n_pixels)) * np.nan
+
+        # Loop over the orders
+        for i in range(self.n_orders):
+
+            # Select only pixels within the order, should be 3*2048
+            idx_low  = self.n_pixels * (i*self.n_dets)
+            idx_high = self.n_pixels * ((i+1)*self.n_dets)
+            
+            mask_wave = np.zeros_like(self.wave, dtype=bool)
+            mask_wave[idx_low:idx_high] = True
+            
+            mask_order = (mask_wave & self.mask_isfinite)
+
+            if mask_order.any():
+
+                flux_i = flux_copy[mask_order]
+
+                # Apply a median filter to this order
+                filtered_flux_i = generic_filter(flux_i, np.nanmedian, size=filter_width)
+                
+                # Subtract the filtered flux
+                residuals = flux_i - filtered_flux_i
+
+                # Sigma-clip the residuals
+                mask_clipped = np.isnan(residuals) 
+                mask_clipped |= (np.abs(residuals) > sigma*np.nanstd(residuals))
+                # mask_clipped = (np.abs(residuals) > sigma*np.std(residuals))
+
+                sigma_clip_bounds[1,i,self.mask_isfinite[mask_wave]] = filtered_flux_i
+                sigma_clip_bounds[0,i] = sigma_clip_bounds[1,i] - sigma*np.std(residuals)
+                sigma_clip_bounds[2,i] = sigma_clip_bounds[1,i] + sigma*np.std(residuals)
+
+                # Set clipped values to NaNs
+                flux_i[mask_clipped]  = np.nan
+                flux_copy[mask_order] = flux_i
+                
+        if debug:
+            print(f'[sigma_clip_median_filter] Fraction of clipped data {np.isnan(flux_copy).sum()/np.size(flux_copy):.2f}')
+
+        if replace_flux:
+            self.flux = flux_copy
+
+            # Update the isfinite mask
+            self.update_isfinite_mask()
+
+        return flux_copy
+    
+    def preprocess(self,
+                   file_transm=None,
+                   tell_threshold=0.7,
+                   n_edge_pixels=30,
+                   flux_calibration_factor=1.8e-10,
+                   sigma_clip=3.0,
+                   sigma_clip_window=11,
+                   ):
+        '''Wrapper function to apply all preprocessing steps to 
+        get the data ready for retrievals'''
+        
+       
+        # Load Telluric model (fitted to the data with Molecfit)
+        # molecfit_spec = DataSpectrum(file_target='data/DHTauA_molecfit_transm.dat', slit='w_0.4', flux_units='')
+        self.load_molecfit_transm(file_transm, tell_threshold)
+
+        # Divide by the molecfit spectrum 
+        # throughput = molecfit_spec.err # read as the third column (fix name)  
+        zeros = self.transm <= 0.01
+        self.flux = np.divide(self.flux, self.transm * self.throughput, where=np.logical_not(zeros))
+        self.err = np.divide(self.err, self.transm * self.throughput, where=np.logical_not(zeros))
+
+        # mask regions with deep telluric lines
+        tell_mask = self.transm < tell_threshold
+        self.flux[tell_mask] = np.nan
+        self.update_isfinite_mask()
+        self.clip_det_edges(n_edge_pixels)
+
+
+        # TODO: proper flux calibration...
+        # convert to erg/s/cm2/cm (quick manual fix for lack of flux calibration..)
+        self.flux *= flux_calibration_factor
+        self.err *= flux_calibration_factor
+        self.flux_units = 'erg/s/cm2/nm' # update flux units
+        
+        
+        if sigma_clip is not None:
+            self.sigma_clip_median_filter(sigma=sigma_clip, filter_width=sigma_clip_window, debug=True)
+        self.reshape_orders_dets()
+        
+        return self
+        
+        
+    
 
 class ModelSpectrum(Spectrum):
     flux_units = 'erg/s/cm2/cm'

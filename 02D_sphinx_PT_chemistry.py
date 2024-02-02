@@ -35,7 +35,7 @@ t, p, VMRs_sphinx, file = load_sphinx_model(Teff=3100.0, log_g=4.0, logZ=0.0, C_
 
 
 
-my_species = ['H2H2', 'H2He', 'H2O', 'CO', 
+my_species = ['H2H2', 'H2He', 'H2O', 'CO', 'HF',
             #   'Na', 'Mg',
             #   'Ca', 'Ti','Fe' # ignore for now... to keep it simple
               ]
