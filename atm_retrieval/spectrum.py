@@ -7,6 +7,8 @@ import petitRADTRANS.nat_cst as nc
 from petitRADTRANS.retrieval import rebin_give_width as rgw
 import pickle
 
+import atm_retrieval.figures as figs
+
 class Spectrum:
     
     order_wlen_ranges = np.array([
@@ -151,6 +153,16 @@ class Spectrum:
         attrs = ['wave', 'flux', 'err', 'mask_isfinite']
         for attr in attrs:
             setattr(self, attr, getattr(self, attr)[mask])
+        return self
+    
+    def crop_spectrum(self):
+        assert hasattr(self, 'wave_range'), 'No wavelength range found'
+        # Crop the spectrum to within a given wavelength range
+        mask_wave = (self.wave >= self.wave_range[0]) & \
+                    (self.wave <= self.wave_range[1])
+        assert np.sum(mask_wave) > 0, 'No data points found in wavelength range'
+        
+        self.flux[~mask_wave] = np.nan
         return self
     
     def flatten(self, debug=False):
@@ -475,11 +487,12 @@ class DataSpectrum(Spectrum):
                    flux_calibration_factor=1.8e-10,
                    sigma_clip=3.0,
                    sigma_clip_window=11,
+                   fig_name=None,
                    ):
         '''Wrapper function to apply all preprocessing steps to 
         get the data ready for retrievals'''
         
-        print(f'** Preprocessing data **')
+        print(f'** Preprocessing data **\n----------------------')
         # Load Telluric model (fitted to the data with Molecfit)
         # molecfit_spec = DataSpectrum(file_target='data/DHTauA_molecfit_transm.dat', slit='w_0.4', flux_units='')
         self.load_molecfit_transm(file_transm, tell_threshold)
@@ -493,7 +506,6 @@ class DataSpectrum(Spectrum):
         # mask regions with deep telluric lines
         tell_mask = self.transm < tell_threshold
         self.flux[tell_mask] = np.nan
-        self.update_isfinite_mask()
         
         print(f' Edge pixels clipped: {n_edge_pixels}')
         self.clip_det_edges(n_edge_pixels)
@@ -514,8 +526,18 @@ class DataSpectrum(Spectrum):
         if sigma_clip is not None:
             self.sigma_clip_median_filter(sigma=sigma_clip, filter_width=sigma_clip_window, debug=False)
             print(f' Sigma clipped at {sigma_clip} sigma')
+            
+        self.crop_spectrum()
+        print(f' Spectrum cropped to {self.wave_range} nm')
+        self.update_isfinite_mask()
+
+        
         self.reshape_orders_dets()
         print(f' Data reshaped into orders and detectors')
+        
+        if fig_name is not None:
+            figs.fig_spec_to_fit(self, fig_name=fig_name)
+        
         print(f' Preprocessing complete!\n')
         return self
         

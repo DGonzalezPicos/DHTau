@@ -11,10 +11,10 @@ import numpy as np
 import pathlib
 import pymultinest
 
-from parameters import Parameters
-from spectrum import DataSpectrum
-from log_likelihood import LogLikelihood
-from pRT_model import pRT_model
+from atm_retrieval.parameters import Parameters
+from atm_retrieval.spectrum import DataSpectrum
+from atm_retrieval.log_likelihood import LogLikelihood
+from atm_retrieval.pRT_model import pRT_model
 
 
 
@@ -83,6 +83,76 @@ class Retrieval:
         with open(file, 'rb') as f:
             return pickle.load(f)
         
+    def PMN_callback_func(self, 
+                          n_samples, 
+                          n_live, 
+                          n_params, 
+                          live_points, 
+                          posterior, 
+                          stats,
+                          max_ln_L, 
+                          ln_Z, 
+                          ln_Z_err, 
+                          nullcontext
+                          ):
+        self.CB.active = True
+
+        if self.evaluation:
+
+            # Set-up analyzer object
+            analyzer = pymultinest.Analyzer(
+                n_params=self.Param.n_params, 
+                outputfiles_basename=self.conf.prefix
+                )
+            stats = analyzer.get_stats()
+
+            # Load the equally-weighted posterior distribution
+            posterior = analyzer.get_equal_weighted_posterior()
+            posterior = posterior[:,:-1]
+
+            # Read the parameters of the best-fitting model
+            bestfit_params = np.array(stats['modes'][0]['maximum a posterior'])
+
+        else:
+
+            # Read the parameters of the best-fitting model
+            bestfit_params = posterior[np.argmax(posterior[:,-2]),:-2]
+
+            # Remove the last 2 columns
+            posterior = posterior[:,:-2]
+
+        if rank != 0:
+            return
+
+        # Evaluate the model with best-fitting parameters
+        for i, key_i in enumerate(self.parameters.param_keys):
+            # Update the Parameters instance
+            self.parameters.params[key_i] = bestfit_params[i]
+        
+            if key_i.startswith('log_'):
+                self.parameters.params = self.parameters.log_to_linear(self.parameters.params, key_i)
+
+            if key_i.startswith('invgamma_'):
+                self.parameters.params[key_i.replace('invgamma_', '')] = self.parameters.params[key_i]
+
+        # Update the parameters
+        # self.parameters.read_PT_params(cube=None)
+        self.parameters.read_uncertainty_params()
+        # self.parameters.read_chemistry_params()
+
+        if self.evaluation:
+            # Get each species' contribution to the spectrum
+            self.get_species_contribution()
+
+        # Update class instances with best-fitting parameters
+        self.PMN_lnL_func()
+        self.CB.active = False
+        
+        # TODO: implement function below...
+        # self.CB = CallBack(...)
+
+        
+        
         
 if __name__=='__main__':
     import matplotlib.pyplot as plt
@@ -96,11 +166,19 @@ if __name__=='__main__':
         # general properties
         # 'Rp'    : ([0.5, 2.0], r'$R_p$ [R$_J$]'),
         # 'log_g' : ([3.0, 5.5], r'$\log(g)$ [cm/s$^2$]'),
+        'log_a': [(-1,0.5), r'$\log\ a$'], 
+        'log_l': [(-2,-0.8), r'$\log\ l$'], 
+        
+        
+        'log_g': [(2.5,5.5), r'$\log\ g$'], 
+
         'vsini' : ([1.0, 20.0], r'$v \sin(i)$ [km/s]'),
         'rv'    : ([-30.0, 30.0], r'RV [km/s]'),
         
         # chemistry
-        'log12CO' : ([-12, -2], r'$\log$(CO)'),
+        'log_12CO': [(-12,-2), r'$\log\ \mathrm{^{12}CO}$'], 
+        'log_13CO': [(-12,-2), r'$\log\ \mathrm{^{13}CO}$'], 
+
         'logH2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
         'logNa'   : ([-12, -2], r'$\log$(Na)'),
         

@@ -4,11 +4,11 @@ import pickle
 from petitRADTRANS import Radtrans
 import petitRADTRANS.nat_cst as nc
 
-from parameters import Parameters
-from spectrum import DataSpectrum, ModelSpectrum
+from atm_retrieval.parameters import Parameters
+from atm_retrieval.spectrum import DataSpectrum, ModelSpectrum
 
-from chemistry import Chemistry
-from PT_profile import PT
+from atm_retrieval.chemistry import Chemistry
+from atm_retrieval.PT_profile import PT
 
 
 class pRT_model:
