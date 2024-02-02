@@ -49,17 +49,21 @@ class Parameters:
         return lambda x: x * (bounds[1] - bounds[0]) + bounds[0]
         
     
-    def __call__(self, cube):
+    def __call__(self, cube, ndim=None, nparams=None):
         '''Return the transformed parameters
         
         WARNING: only works for Uniform Priors'''
-        sample = cube.copy()
+        # self.cube_copy = cube.copy()
+        if (ndim is None) and (nparams is None):
+            self.cube_copy = cube
+        else:
+            self.cube_copy = np.array(cube[:ndim])
         
         for i, key_i in enumerate(self.param_keys):
-            sample[i] = self.uniform_prior(self.param_priors[key_i])(cube[i]) 
-            self.params[key_i] = sample[i]
+            cube[i] = self.uniform_prior(self.param_priors[key_i])(cube[i]) 
+            self.params[key_i] = cube[i]
 
-        return sample
+        return self.cube_copy
     
     def add_sample(self, sample):
         

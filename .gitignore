@@ -1,3 +1,5 @@
 *.npy
 *.pyc
 *.pickle
+atm_retrieval.egg-info
+retrieval_outputs/

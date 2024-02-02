@@ -304,7 +304,7 @@ class DataSpectrum(Spectrum):
                                        ra2000=self.ra, dec2000=self.dec, 
                                        jd=self.mjd+2400000.5
                                        )
-        print('Barycentric velocity: {:.2f} km/s'.format(self.v_bary))
+        print(' Barycentric velocity: {:.2f} km/s'.format(self.v_bary))
         if return_v_bary:
             return self.v_bary
 
@@ -469,6 +469,9 @@ class DataSpectrum(Spectrum):
                    file_transm=None,
                    tell_threshold=0.7,
                    n_edge_pixels=30,
+                   ra=None,
+                   dec=None,
+                   mjd=None,
                    flux_calibration_factor=1.8e-10,
                    sigma_clip=3.0,
                    sigma_clip_window=11,
@@ -476,7 +479,7 @@ class DataSpectrum(Spectrum):
         '''Wrapper function to apply all preprocessing steps to 
         get the data ready for retrievals'''
         
-       
+        print(f'** Preprocessing data **')
         # Load Telluric model (fitted to the data with Molecfit)
         # molecfit_spec = DataSpectrum(file_target='data/DHTauA_molecfit_transm.dat', slit='w_0.4', flux_units='')
         self.load_molecfit_transm(file_transm, tell_threshold)
@@ -486,11 +489,13 @@ class DataSpectrum(Spectrum):
         zeros = self.transm <= 0.01
         self.flux = np.divide(self.flux, self.transm * self.throughput, where=np.logical_not(zeros))
         self.err = np.divide(self.err, self.transm * self.throughput, where=np.logical_not(zeros))
-
+        print(f' Telluric correction applied (threshold = {tell_threshold})')
         # mask regions with deep telluric lines
         tell_mask = self.transm < tell_threshold
         self.flux[tell_mask] = np.nan
         self.update_isfinite_mask()
+        
+        print(f' Edge pixels clipped: {n_edge_pixels}')
         self.clip_det_edges(n_edge_pixels)
 
 
@@ -499,12 +504,19 @@ class DataSpectrum(Spectrum):
         self.flux *= flux_calibration_factor
         self.err *= flux_calibration_factor
         self.flux_units = 'erg/s/cm2/nm' # update flux units
+        print(f' Flux calibrated to {self.flux_units}')
         
-        
+        ## shift to barycentric frame
+        if (ra is not None) and (dec is not None) and (mjd is not None):
+            self.ra, self.dec, self.mjd = ra, dec, mjd
+            self.bary_corr()
+            
         if sigma_clip is not None:
-            self.sigma_clip_median_filter(sigma=sigma_clip, filter_width=sigma_clip_window, debug=True)
+            self.sigma_clip_median_filter(sigma=sigma_clip, filter_width=sigma_clip_window, debug=False)
+            print(f' Sigma clipped at {sigma_clip} sigma')
         self.reshape_orders_dets()
-        
+        print(f' Data reshaped into orders and detectors')
+        print(f' Preprocessing complete!\n')
         return self
         
         

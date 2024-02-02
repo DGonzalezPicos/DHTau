@@ -48,30 +48,13 @@ parameters = Parameters(free_params, constant_params)
 ## Load CRIRES data
 file_data = 'data/DHTauA.dat'
 d_spec = DataSpectrum(file_target=file_data, slit='w_0.4', flux_units='photons')
-# Load Telluric model (fitted to the data with Molecfit)
-molecfit_spec = DataSpectrum(file_target='data/DHTauA_molecfit_transm.dat', slit='w_0.4', flux_units='')
-
-# Divide by the molecfit spectrum 
-throughput = molecfit_spec.err # read as the third column (fix name)  
-transm = (molecfit_spec.flux * throughput)
-zeros = transm <= 0.01
-d_spec.flux = np.divide(d_spec.flux, transm, where=np.logical_not(zeros))
-d_spec.err = np.divide(d_spec.err, transm, where=np.logical_not(zeros))
-
-# mask regions with deep telluric lines
-tell_threshold = 0.7
-tell_mask = molecfit_spec.flux < tell_threshold
-d_spec.flux[tell_mask] = np.nan
-d_spec.update_isfinite_mask()
-d_spec.clip_det_edges(30)
-
-
-# Flatten arrays for plotting purposes
-d_spec.reshape_orders_dets()
-# convert to erg/s/cm2/cm (quick manual fix for lack of flux calibration..)
-d_spec.flux *= 1.8e-10
-d_spec.err *= 1.8e-10
-d_spec.flux_units = 'erg/s/cm2/nm' # update flux units
+d_spec.preprocess(
+        file_transm='data/DHTauA_molecfit_transm.dat',
+        tell_threshold=0.4,
+        n_edge_pixels=30,
+        sigma_clip=3,
+        sigma_clip_window=11,
+        )
 
 ## Load precomputed model (from pRT_model.py)
 assert pathlib.Path('data/testing_atm.pickle').exists(), 'Run pRT_model.py first'
