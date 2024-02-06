@@ -6,10 +6,10 @@ import pathlib
 from petitRADTRANS import Radtrans
 import petitRADTRANS.nat_cst as nc
 
-from parameters import Parameters
-from spectrum import DataSpectrum, ModelSpectrum
-from pRT_model import pRT_model
-from log_likelihood import LogLikelihood
+from atm_retrieval.parameters import Parameters
+from atm_retrieval.spectrum import DataSpectrum, ModelSpectrum
+from atm_retrieval.pRT_model import pRT_model
+from atm_retrieval.log_likelihood import LogLikelihood
 
 
 path = pathlib.Path('atm_retrieval/') # run file as --> python atm_retrieval/prior_predictive_check.py
