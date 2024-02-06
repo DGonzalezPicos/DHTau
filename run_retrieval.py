@@ -20,8 +20,8 @@ plots_dir.mkdir(parents=True, exist_ok=True)
     
 # Instantiate the parser
 parser = argparse.ArgumentParser()
-parser.add_argument('--pre_processing', '-p', action='store_true', default=False)
-parser.add_argument('--prior_check', '-c', action='store_true', default=False)
+parser.add_argument('--pre_processing', '-p', action='store_true', default=True)
+parser.add_argument('--prior_check', '-c', action='store_true', default=True)
 parser.add_argument('--retrieval', '-r', action='store_true', default=False)
 args = parser.parse_args()
 
@@ -56,7 +56,7 @@ constant_params = {
     'log_P_knots': [2, 1, -1, -5], # [log(bar)]
     'R_p'    : 1.0,
     'distance': 133.3, # [pc] Gaia EDR3 parallactic distance from Bailer-Jones et al. (2021)
-    # 'log_g' : 4.0,
+    'log_g' : 4.0,
     'epsilon_limb' : 0.5,
     
 }
@@ -96,6 +96,7 @@ if args.pre_processing:
             
             'H2O': 'H2O_pokazatel_main_iso',
             '12CO': 'CO_high',
+            '13CO': 'CO_36_high',
             'Na': 'Na_allard',
         }
         pRT = pRT_model(line_species_dict=line_species_dict,
