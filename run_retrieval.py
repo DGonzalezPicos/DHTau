@@ -182,8 +182,9 @@ if args.prior_check:
 if args.retrieval:
     print('Retrieval...')
     ### Init retrieval object
-    with open(run_dir / 'retrieval.pickle', 'rb') as f:
-        ret = pickle.load(f)
+    d_spec = pickle_load(run_dir / 'd_spec.pickle')
+    pRT = pickle_load(run_dir / 'atm.pickle')
+    ret = Retrieval(parameters, d_spec, pRT)
 
     # uncomment line below to run the retrieval
     ret.PMN_run(run=run)
