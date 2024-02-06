@@ -52,8 +52,8 @@ class Retrieval:
         # sample = self.parameters(cube) # the attribute self.parameters.params is updated
         # self.parameters.add_sample(sample)
         
-        m_spec = self.pRT_model(self.parameters.params)
-        lnL = self.loglike(m_spec)
+        self.m_spec = self.pRT_model(self.parameters.params)
+        lnL = self.loglike(self.m_spec)
         return lnL
     
     def PMN_run(self, run='testing'):

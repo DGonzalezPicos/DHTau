@@ -102,10 +102,12 @@ class pRT_model:
         self.params = params
 
         # Generate a model spectrum
-        self.m_spec = self.get_model_spectrum(
+        m_spec = self.get_model_spectrum(
             get_contr=get_contr, get_full_spectrum=get_full_spectrum
             )
-        return self.m_spec
+        # print('Model spectrum generated')
+        # print(m_spec)
+        return m_spec
     def get_model_spectrum(self, get_contr=False, get_full_spectrum=False):
         '''
         Generate a model spectrum with the given parameters.
@@ -153,13 +155,17 @@ class pRT_model:
 
             # Convert [cm] -> [nm]
             wave_i *= 1e7
-
+            
             # Convert to observation by scaling with planetary radius
-            if 'R_p' in self.params.keys() and 'parallax' in self.params.keys():
-                flux_i *= (
-                    (self.params['R_p']*nc.r_jup_mean) / \
-                    (1e3/self.params['parallax']*nc.pc)
-                    )**2
+            if 'R_p' in self.params.keys(): 
+                if 'parallax' in self.params.keys():
+                    distance = 1e3/self.params['parallax'] # where parallax is in mas
+                elif 'distance' in self.params.keys():
+                    distance = self.params['distance'] # must be in pc
+                else:
+                    continue
+                # Convert to observed flux by scaling with radius and distance
+                flux_i *= ((self.params['R_p']*nc.r_jup_mean) / (distance*nc.pc))**2
 
             # Create a ModelSpectrum instance
             m_spec_i = ModelSpectrum(
@@ -258,9 +264,9 @@ if __name__=='__main__':
         'rv'    : ([-30.0, 30.0], r'RV [km/s]'),
         
         # chemistry
-        'log12CO' : ([-12, -2], r'$\log$(CO)'),
-        'logH2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
-        'logNa'   : ([-12, -2], r'$\log$(Na)'),
+        'log_12CO' : ([-12, -2], r'$\log$(CO)'),
+        'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
+        'log_Na'   : ([-12, -2], r'$\log$(Na)'),
         
         # temperature profile
         'T1' : ([2000, 20000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)

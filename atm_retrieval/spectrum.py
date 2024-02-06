@@ -121,6 +121,7 @@ class Spectrum:
 
             # Update the isfinite mask
             self.update_isfinite_mask()
+            return self
         
         return flux_rebinned
 

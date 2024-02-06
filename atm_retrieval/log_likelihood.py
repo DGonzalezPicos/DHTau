@@ -68,7 +68,8 @@ class LogLikelihood:
                 # ln_L_ij = -0.5 * (N_ij*np.log(2*np.pi))
                 # print(f'ln_L_ij (before chi2) = {ln_L_ij:.2f}')
                 f_ij = 1.0
-                if self.scale_flux and (not (i+j)==0):
+                # if self.scale_flux and (not (i+j)==0): # this is to retrieve the radius
+                if self.scale_flux:
                     # Only scale the flux relative to the first order/detector
                     # Scale the model flux to minimize the chi-squared error
                     m_flux_ij_scaled, f_ij = self.get_flux_scaling(d_flux_ij, m_flux_ij, inv_cov_ij)

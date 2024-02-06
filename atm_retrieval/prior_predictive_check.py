@@ -23,9 +23,9 @@ free_params = {
         # 'rv'    : ([-30.0, 30.0], r'RV [km/s]'),
         
         # chemistry
-        'log12CO' : ([-8, -2], r'$\log$(CO)'),
-        'logH2O'  : ([-8, -2], r'$\log$(H$_2$O)'),
-        'logNa'   : ([-12, -3], r'$\log$(Na)'),
+        'log_12CO' : ([-8, -2], r'$\log$(CO)'),
+        'log_H2O'  : ([-8, -2], r'$\log$(H$_2$O)'),
+        'log_Na'   : ([-12, -3], r'$\log$(Na)'),
         
         # temperature profile
         'T1' : ([4000, 10000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
