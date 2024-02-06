@@ -10,7 +10,7 @@ from atm_retrieval.retrieval import Retrieval
 import pickle
 
 
-run = 'testing_000'
+run = 'testing_001'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -20,9 +20,9 @@ plots_dir.mkdir(parents=True, exist_ok=True)
     
 # Instantiate the parser
 parser = argparse.ArgumentParser()
-parser.add_argument('--pre_processing', '-p', action='store_true')
-parser.add_argument('--retrieval', '-r', action='store_true')
-parser.add_argument('--prior_check', '-c', action='store_true')
+parser.add_argument('--pre_processing', '-p', action='store_true', default=True)
+parser.add_argument('--prior_check', '-c', action='store_true', default=False)
+parser.add_argument('--retrieval', '-r', action='store_true', default=False)
 args = parser.parse_args()
 
 if args.pre_processing:
@@ -45,8 +45,8 @@ if args.pre_processing:
         'log_12CO': [(-12,-2), r'$\log\ \mathrm{^{12}CO}$'], 
         'log_13CO': [(-12,-2), r'$\log\ \mathrm{^{13}CO}$'], 
 
-        'logH2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
-        'logNa'   : ([-12, -2], r'$\log$(Na)'),
+        'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
+        'log_Na'   : ([-12, -2], r'$\log$(Na)'),
         
         # temperature profile
         'T1' : ([2000, 20000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
@@ -69,7 +69,7 @@ if args.pre_processing:
     d_spec = DataSpectrum(file_target=file_data, 
                           slit='w_0.2', 
                           flux_units='photons',
-                          wave_range=[2060, 2480])
+                          wave_range=[2290, 2480])
     d_spec.preprocess(
         file_transm='data/DHTauA_molecfit_transm.dat',
         tell_threshold=0.4,
@@ -82,7 +82,34 @@ if args.pre_processing:
         fig_name=plots_dir / 'preprocessed_spec.pdf'
         )
     # output shape of wave, flux, err = (n_orders, n_dets, n_wave) = (7, 3, 2048)
-    pRT_model = pRT_model().pickle_load('data/testing_atm.pickle')
+    
+    # pRT_model = pRT_model().pickle_load('data/testing_atm.pickle')
+    ## Prepare pRT model
+    
+    if (run_dir / 'atm.pickle').exists():
+        print('Loading precomputed pRT model...')
+        pRT = pRT_model().pickle_load(run_dir / 'atm.pickle')
+    else:
+        line_species_dict = {
+            
+            'H2O': 'H2O_pokazatel_main_iso',
+            '12CO': 'CO_high',
+            'Na': 'Na_allard',
+        }
+        pRT = pRT_model(line_species_dict=line_species_dict,
+                        d_spec=d_spec,
+                        mode='lbl',
+                        lbl_opacity_sampling=5,
+                        rayleigh_species=['H2', 'He'],
+                        continuum_opacities=['H2-H2', 'H2-He'],
+                        log_P_range=(-5,2),
+                        n_atm_layers=30,
+                        rv_range=(-50,50))
+        
+
+        # Load opacities and prepare a Radtrans instance for every order-detector
+        pRT.get_atmospheres()
+        pRT.pickle_save(run_dir / 'atm.pickle')
 
     ### Init retrieval object
     ret = Retrieval(parameters, d_spec, pRT_model)

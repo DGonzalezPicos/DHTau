@@ -16,7 +16,7 @@ from atm_retrieval.spectrum import DataSpectrum
 from atm_retrieval.log_likelihood import LogLikelihood
 from atm_retrieval.pRT_model import pRT_model
 
-
+from atm_retrieval.utils import quantiles
 
 class Retrieval:
     
@@ -41,11 +41,15 @@ class Retrieval:
         # ensure the output directory exists
         pathlib.Path(self.output_dir).mkdir(parents=True, exist_ok=True)
         
+        # default
+        self.evaluation = False
+        self.cb_count = 0
+        
         
     def PMN_lnL_func(self, cube=None, ndim=None, nparams=None):
         
         # Transform the cube to the parameter space
-        sample = self.parameters(cube) # the attribute self.parameters.params is updated
+        # sample = self.parameters(cube) # the attribute self.parameters.params is updated
         # self.parameters.add_sample(sample)
         
         m_spec = self.pRT_model(self.parameters.params)
@@ -55,6 +59,7 @@ class Retrieval:
     def PMN_run(self, run='testing'):
         
         run_dir = f'{self.output_dir}/{run}'
+        output_dir = pathlib.Path(run_dir) / 'output'
         
         # Pause the process to not overload memory on start-up
         time.sleep(1.5*rank)
@@ -64,7 +69,7 @@ class Retrieval:
             LogLikelihood=self.PMN_lnL_func, 
             Prior=self.parameters, 
             n_dims=self.parameters.n_params, 
-            outputfiles_basename=f'{self.output_dir}/{run}/pmn_', 
+            outputfiles_basename=f'{self.output_dir}/pmn_', 
             resume=False, 
             verbose=True, 
             const_efficiency_mode=True, 
@@ -72,6 +77,7 @@ class Retrieval:
             n_live_points=self.n_live_points, 
             evidence_tolerance=self.evidence_tolerance, 
             n_iter_before_update=self.n_iter_before_update, 
+            dump_callback=self.PMN_callback,
             )
         
     def pickle_save(self, file):
@@ -83,7 +89,7 @@ class Retrieval:
         with open(file, 'rb') as f:
             return pickle.load(f)
         
-    def PMN_callback_func(self, 
+    def PMN_callback(self, 
                           n_samples, 
                           n_live, 
                           n_params, 
@@ -128,28 +134,77 @@ class Retrieval:
         for i, key_i in enumerate(self.parameters.param_keys):
             # Update the Parameters instance
             self.parameters.params[key_i] = bestfit_params[i]
-        
             if key_i.startswith('log_'):
-                self.parameters.params = self.parameters.log_to_linear(self.parameters.params, key_i)
+                self.Param.params = self.Param.log_to_linear(self.Param.params, key_i)
 
-            if key_i.startswith('invgamma_'):
-                self.parameters.params[key_i.replace('invgamma_', '')] = self.parameters.params[key_i]
+        # # Update the parameters
+        # # self.parameters.read_PT_params(cube=None)
+        # # self.parameters.read_uncertainty_params()
+        # # self.parameters.read_chemistry_params()
 
-        # Update the parameters
-        # self.parameters.read_PT_params(cube=None)
-        self.parameters.read_uncertainty_params()
-        # self.parameters.read_chemistry_params()
+        # if self.evaluation:
+        #     # Get each species' contribution to the spectrum
+        #     self.get_species_contribution()
 
-        if self.evaluation:
-            # Get each species' contribution to the spectrum
-            self.get_species_contribution()
-
-        # Update class instances with best-fitting parameters
-        self.PMN_lnL_func()
-        self.CB.active = False
+        # # Update class instances with best-fitting parameters
+        # self.PMN_lnL_func()
+        # self.CB.active = False
         
-        # TODO: implement function below...
-        # self.CB = CallBack(...)
+        # # TODO: implement function below...
+        # # self.CB = CallBack(...)
+        
+        # simple cornerplot
+        print(f'Best-fitting parameters: {bestfit_params}')
+        
+        labels = [v[-1] for k,v in self.conf.free_params.items()]
+        
+        # get quantiles for ranges
+        quantiles = np.array(
+                [quantiles(samples[:,i], q=[0.16,0.5,0.84]) \
+                for i in range(samples.shape[1])]
+                )
+            
+        ranges = np.array(
+            [(4*(q_i[0]-q_i[1])+q_i[1], 4*(q_i[2]-q_i[1])+q_i[1]) \
+                for q_i in quantiles]
+            )
+        
+        fontsize = 12
+        color = 'green'
+        smooth = 1.0
+        # plot cornerplot
+        fig = corner.corner(posterior, 
+                            labels=labels, 
+                            title_kwargs={'fontsize': fontsize},
+                            labelpad=0.25*posterior.shape[0]/17,
+                            bins=20,
+                            max_n_ticks=3,
+                            show_titles=True,
+                            range=ranges,
+                            
+                            quantiles=[0.16,0.84],
+                            title_quantiles=[0.16,0.5,0.84],
+                            
+                            color=color,
+                            linewidths=0.5,
+                            hist_kwargs={'color':color,
+                                            'linewidth':0.5,
+                                            'density':True,
+                                            'histtype':'stepfilled',
+                                            'alpha':0.5,
+                                            },
+                            
+                            fill_contours=True,
+                            smooth=smooth,
+                            )
+        corner.overplot_lines(fig, bestfit_params, color='green', lw=0.5)
+        fig_label = 'final' if self.evaluation else f'{self.cb_count}'
+
+        outfig = f'{self.output_dir}/corner_{fig_label}.png'
+        fig.savefig(outfig)
+        print(f'Saved {outfig}\n')
+        plt.close(fig)
+        
 
         
         
@@ -160,6 +215,8 @@ if __name__=='__main__':
     run = 'testing_000'
     run_dir = pathlib.Path(f'retrieval_outputs/{run}')
     run_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     
     ## Define parameters
     free_params = {
@@ -228,3 +285,5 @@ if __name__=='__main__':
     
     # uncomment line below to run the retrieval
     ret.PMN_run(run='testing_000')
+    
+    ret.evaluation = True

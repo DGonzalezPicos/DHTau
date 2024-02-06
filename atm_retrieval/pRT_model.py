@@ -102,10 +102,10 @@ class pRT_model:
         self.params = params
 
         # Generate a model spectrum
-        m_spec = self.get_model_spectrum(
+        self.m_spec = self.get_model_spectrum(
             get_contr=get_contr, get_full_spectrum=get_full_spectrum
             )
-        return m_spec
+        return self.m_spec
     def get_model_spectrum(self, get_contr=False, get_full_spectrum=False):
         '''
         Generate a model spectrum with the given parameters.
@@ -209,7 +209,7 @@ class pRT_model:
         
         VMRs = {} # {'H2O': (1e-4, 'H2O_pokazatel_main_iso')}
         for key, value in self.line_species_dict.items():
-            VMRs[key] = (10.0**params[f'log{key}'], value)
+            VMRs[key] = (10.0**params[f'log_{key}'], value)
             
         # VMRs = {key: 10.0**params[f'log{key}'] for key in self.line_species_dict.keys()}
         
@@ -223,6 +223,7 @@ class pRT_model:
         assert 'log_P_knots' in params.keys(), 'log_P_knots not in params.keys()'
         # Select the temperature knots
         T_knots_keys = sorted([k for k in params.keys() if k.startswith('T') and len(k)==2])
+        # T1 = params['T1']
         assert T_knots_keys[0] == 'T1'
         # important to sort them from bottom to top (T1, T2, ...)
         T_knots = [params[key] for key in T_knots_keys]
