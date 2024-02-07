@@ -194,8 +194,9 @@ class Retrieval:
         self.pRT_model.PT.temperature_envelopes = quantiles(np.array(temperature_samples), q=q, axis=0)
         
         if hasattr(self.pRT_model, 'int_contr_em'):
-            print(f'Copying integrated contribution emission from pRT_atm to PT')
-            self.pRT_model.PT.int_contr_em = self.pRT_model.int_contr_em
+            if np.sum(np.isnan(self.pRT_model.int_contr_em)) == 0:
+                print(f'Copying integrated contribution emission from pRT_atm to PT')
+                self.pRT_model.PT.int_contr_em = self.pRT_model.int_contr_em
         ax_PT = figs.fig_PT(
             PT=self.pRT_model.PT, 
             ax=ax_PT, 
