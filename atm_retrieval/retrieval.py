@@ -63,10 +63,7 @@ class Retrieval:
         lnL = self.loglike(self.m_spec)
         return lnL
     
-    def PMN_run(self, run='testing'):
-        
-        # run_dir = f'{self.output_dir}/{run}'
-        # output_dir = pathlib.Path(run_dir) / 'output'
+    def PMN_run(self):
         
         # Pause the process to not overload memory on start-up
         time.sleep(0.4*rank)

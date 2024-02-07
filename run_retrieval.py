@@ -10,7 +10,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_005'
+run = 'testing_006'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -47,13 +47,13 @@ free_params = {
     
     # temperature profile
     'T1' : ([5000, 8000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
-    'T2' : ([3000, 6000], r'$T_2$ [K]'),
-    'T3' : ([1000, 3000], r'$T_3$ [K]'),
+    'T2' : ([1000, 6000], r'$T_2$ [K]'),
+    'T3' : ([600, 3000], r'$T_3$ [K]'),
     'T4' : ([200,  2000],  r'$T_4$ [K]'),
 }
 
 constant_params = {
-    'log_P_knots': [2, 1, -1, -5], # [log(bar)]
+    'log_P_knots': [2, 0, -2, -5], # [log(bar)]
     'R_p'    : 1.0,
     'distance': 133.3, # [pc] Gaia EDR3 parallactic distance from Bailer-Jones et al. (2021)
     # 'log_g' : 4.0,
@@ -196,10 +196,10 @@ if args.retrieval:
     ### Init retrieval object
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT)
+    ret = Retrieval(parameters, d_spec, pRT, run=run)
 
     # uncomment line below to run the retrieval
-    ret.PMN_run(run=run)
+    ret.PMN_run()
     
     # call this file from the command line (with modules loaded and environment activated) as follows:
     # replace 64 by the number of CPU cores available
