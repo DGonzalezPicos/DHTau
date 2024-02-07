@@ -100,6 +100,10 @@ class pRT_model:
         self.mass_fractions = self.get_mass_fractions(params)
         self.temperature    = self.get_temperature(params)
         self.params = params
+        
+        self.int_contr_em  = np.zeros_like(self.pressure)
+        self.int_contr_em_per_order = np.zeros((self.d_wave.shape[0], len(self.pressure)))
+
 
         # Generate a model spectrum
         m_spec = self.get_model_spectrum(
@@ -195,6 +199,17 @@ class pRT_model:
             
             # TODO: get contribution function
             # if get_contr:
+            if get_contr:
+
+                # Integrate the emission contribution function and cloud opacity
+                self.get_integrated_contr_em(
+                    atm_i, m_wave_i=wave_i, 
+                    d_wave_i=self.d_wave[i,:], 
+                    d_mask_i=self.d_mask_isfinite[i], 
+                    m_spec_i=m_spec_i, 
+                    order=i
+                    )
+
             
             
         # Create a new ModelSpectrum instance with all orders
@@ -237,6 +252,46 @@ class pRT_model:
         self.PT = PT(self.pressure)
         self.temperature = self.PT.spline(params['log_P_knots'], T_knots)               
         return self.temperature
+    
+    def get_integrated_contr_em(self,
+                                atm_i,
+                                m_wave_i, 
+                                d_wave_i, 
+                                d_mask_i, 
+                                m_spec_i, 
+                                order
+                                ):
+        
+        # Get the emission contribution function
+        contr_em_i = atm_i.contr_em
+        new_contr_em_i = []
+        
+        for j, contr_em_ij in enumerate(contr_em_i):
+            
+            # Similar to the model flux
+            contr_em_ij = ModelSpectrum(
+                wave=m_wave_i, flux=contr_em_ij, 
+                lbl_opacity_sampling=self.lbl_opacity_sampling
+                )
+            # Shift, broaden, rebin the contribution
+            contr_em_ij.shift_broaden_rebin(
+                d_wave=d_wave_i, 
+                rv=self.params['rv'], 
+                vsini=self.params['vsini'], 
+                epsilon_limb=self.params['epsilon_limb'], 
+                out_res=self.d_resolution, 
+                in_res=m_spec_i.resolution, 
+                rebin=True, 
+                )
+            # Compute the spectrally-weighted emission contribution function
+            # Integrate and weigh the emission contribution function
+            self.int_contr_em_per_order[order,j] = \
+                contr_em_ij.spectrally_weighted_integration(
+                    wave=d_wave_i[d_mask_i].flatten(), 
+                    flux=m_spec_i.flux[d_mask_i].flatten(), 
+                    array=contr_em_ij.flux[d_mask_i].flatten(), 
+                    )
+            self.int_contr_em[j] += self.int_contr_em_per_order[order,j]
         
         
     def pickle_save(self, file):

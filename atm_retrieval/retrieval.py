@@ -17,6 +17,7 @@ from atm_retrieval.parameters import Parameters
 from atm_retrieval.spectrum import DataSpectrum
 from atm_retrieval.log_likelihood import LogLikelihood
 from atm_retrieval.pRT_model import pRT_model
+import atm_retrieval.figures as figs
 
 from atm_retrieval.utils import quantiles
 
@@ -27,9 +28,11 @@ class Retrieval:
     output_dir = 'retrieval_outputs'
     n_live_points = 100
     evidence_tolerance = 0.5
-    n_iter_before_update = 500
+    n_iter_before_update = n_live_points // 1
     
-    def __init__(self, parameters, d_spec, pRT_model):
+    bestfit_color = 'green'
+    
+    def __init__(self, parameters, d_spec, pRT_model, run='testing'):
         self.parameters = parameters
         self.d_spec = d_spec
         self.pRT_model = pRT_model
@@ -42,6 +45,8 @@ class Retrieval:
         
         # ensure the output directory exists
         pathlib.Path(self.output_dir).mkdir(parents=True, exist_ok=True)
+        self.run_dir = pathlib.Path(f'{self.output_dir}/{run}')
+        self.run_dir.mkdir(parents=True, exist_ok=True)
         
         # default
         self.evaluation = False
@@ -54,24 +59,24 @@ class Retrieval:
         # sample = self.parameters(cube) # the attribute self.parameters.params is updated
         # self.parameters.add_sample(sample)
         
-        self.m_spec = self.pRT_model(self.parameters.params)
+        self.m_spec = self.pRT_model(self.parameters.params, get_contr=self.evaluation)
         lnL = self.loglike(self.m_spec)
         return lnL
     
     def PMN_run(self, run='testing'):
         
-        run_dir = f'{self.output_dir}/{run}'
-        output_dir = pathlib.Path(run_dir) / 'output'
+        # run_dir = f'{self.output_dir}/{run}'
+        # output_dir = pathlib.Path(run_dir) / 'output'
         
         # Pause the process to not overload memory on start-up
-        time.sleep(1.5*rank)
+        time.sleep(0.4*rank)
 
         # Run the MultiNest retrieval
         pymultinest.run(
             LogLikelihood=self.PMN_lnL_func, 
             Prior=self.parameters, 
             n_dims=self.parameters.n_params, 
-            outputfiles_basename=f'{self.output_dir}/pmn_', 
+            outputfiles_basename=f'{self.run_dir}/pmn_', 
             resume=False, 
             verbose=True, 
             const_efficiency_mode=True, 
@@ -92,25 +97,24 @@ class Retrieval:
             return pickle.load(f)
         
     def PMN_callback(self, 
-                          n_samples, 
-                          n_live, 
-                          n_params, 
-                          live_points, 
-                          posterior, 
-                          stats,
-                          max_ln_L, 
-                          ln_Z, 
-                          ln_Z_err, 
-                          nullcontext
-                          ):
-        # self.CB.active = True
+                    n_samples, 
+                    n_live, 
+                    n_params, 
+                    live_points, 
+                    posterior, 
+                    stats,
+                    max_ln_L, 
+                    ln_Z, 
+                    ln_Z_err, 
+                    nullcontext
+                    ):
 
         if self.evaluation:
 
             # Set-up analyzer object
             analyzer = pymultinest.Analyzer(
                 n_params=self.parameters.n_params, 
-                outputfiles_basename=f'{self.output_dir}/pmn_',
+                outputfiles_basename=f'{self.run_dir}/pmn_',
                 )
             stats = analyzer.get_stats()
 
@@ -121,13 +125,6 @@ class Retrieval:
             # Read the parameters of the best-fitting model
             bestfit_params = np.array(stats['modes'][0]['maximum a posterior'])
             
-            # PT envelopes
-            temperature_env = []
-            for sample in posterior:
-                self.parameters.params.add_sample(sample)
-                self.pRT_model.get_temperature(self.parameters.params)
-                temperature_env.append(self.pRT_model.temperature)
-
         else:
 
             # Read the parameters of the best-fitting model
@@ -140,81 +137,102 @@ class Retrieval:
             return
 
         # Evaluate the model with best-fitting parameters
-        # for i, key_i in enumerate(self.parameters.param_keys):
-        #     # Update the Parameters instance
-        #     self.parameters.params[key_i] = bestfit_params[i]
-        #     if key_i.startswith('log_'):
-        #         self.parameters.params = self.parameters.log_to_linear(self.Param.params, key_i)
+        self.parameters.add_sample(bestfit_params)
+        self.PMN_lnL_func()
 
-        # # Update the parameters
-        # # self.parameters.read_PT_params(cube=None)
-        # # self.parameters.read_uncertainty_params()
-        # # self.parameters.read_chemistry_params()
-
-        # if self.evaluation:
-        #     # Get each species' contribution to the spectrum
-        #     self.get_species_contribution()
-
-        # # Update class instances with best-fitting parameters
-        # self.PMN_lnL_func()
-        # self.CB.active = False
-        
-        # # TODO: implement function below...
-        # # self.CB = CallBack(...)
-        
-        # simple cornerplot
-        print(f'Best-fitting parameters: {bestfit_params}')
-        
         labels = np.array(list(self.parameters.param_mathtext.values()))
         
-        # get quantiles for ranges
-        Q = np.array(
-                [quantiles(posterior[:,i], q=[0.16,0.5,0.84]) \
-                for i in range(posterior.shape[1])]
-                )
-            
-        ranges = np.array(
-            [(4*(q_i[0]-q_i[1])+q_i[1], 4*(q_i[2]-q_i[1])+q_i[1]) \
-                for q_i in Q]
-            )
-        
-        fontsize = 12
-        color = 'green'
-        smooth = 1.0
-        # plot cornerplot
-        fig = corner.corner(posterior, 
-                            labels=labels, 
-                            title_kwargs={'fontsize': fontsize},
-                            labelpad=0.25*posterior.shape[0]/17,
-                            bins=20,
-                            max_n_ticks=3,
-                            show_titles=True,
-                            range=ranges,
-                            
-                            quantiles=[0.16,0.84],
-                            title_quantiles=[0.16,0.5,0.84],
-                            
-                            color=color,
-                            linewidths=0.5,
-                            hist_kwargs={'color':color,
-                                            'linewidth':0.5,
-                                            'density':True,
-                                            'histtype':'stepfilled',
-                                            'alpha':0.5,
-                                            },
-                            
-                            fill_contours=True,
-                            smooth=smooth,
-                            )
-        corner.overplot_lines(fig, bestfit_params, color='green', lw=0.5)
         fig_label = 'final' if self.evaluation else f'{self.cb_count}'
 
-        outfig = f'{self.output_dir}/corner_{fig_label}.png'
-        fig.savefig(outfig)
-        print(f'Saved {outfig}\n')
-        plt.close(fig)
-        
+            
+        fig = figs.simple_cornerplot(posterior,
+                                labels, 
+                                bestfit_params=bestfit_params)
+        l, b, w, h = [0.32,3.42,0.65,0.20]
 
+        ax_res_dim  = [l, b*(h+0.03), w, 0.97*h/5]
+        ax_spec_dim = [l, ax_res_dim[1]+ax_res_dim[3], w, 4*0.97*h/5]
+
+
+        ax_spec = fig.add_axes(ax_spec_dim)
+        ax_res = fig.add_axes(ax_res_dim)
+        
+        ax_spec, ax_res = figs.fig_bestfit_model(
+            self.d_spec, 
+            self.m_spec,
+            self.loglike,
+            Cov=None,
+            xlabel=r'Wavelength [nm]',
+            ylabel=r'Flux [erg/s/cm$^2$/cm]',
+            ax_spec=ax_spec,
+            ax_res=ax_res,
+            bestfit_color=self.bestfit_color,
+            # fig_name=self.run_dir / f'plots/retrieval_bestfit_model.pdf',
+            )
+            
+        
+        l, b, w, h = [0.69,0.45,0.28,0.28]
+        ax_PT = fig.add_axes([l,b,h,h])
+        # Plot the best-fitting PT profile
+        x1, x2 = np.min(self.pRT_model.PT.temperature), np.max(self.pRT_model.PT.temperature)
+        x_pad = 0.05*(x2-x1)
+        x1 -= x_pad
+        x2 += x_pad
+        
+        # if self.evaluation
+        # PT envelopes
+        temperature_samples = []
+        for sample in posterior:
+            self.parameters.add_sample(sample)
+            self.pRT_model.get_temperature(self.parameters.params)
+            temperature_samples.append(self.pRT_model.temperature)
+            
+        # Convert profiles to 1, 2, 3-sigma equivalent and median
+        q = [0.5-0.997/2, 0.5-0.95/2, 0.5-0.68/2, 0.5, 
+            0.5+0.68/2, 0.5+0.95/2, 0.5+0.997/2
+            ]  
+        self.pRT_model.PT.temperature_envelopes = quantiles(np.array(temperature_samples), q=q, axis=0)
+        
+        if hasattr(self.pRT_model, 'int_contr_em'):
+            print(f'Copying integrated contribution emission from pRT_atm to PT')
+            self.pRT_model.PT.int_contr_em = self.pRT_model.int_contr_em
+        ax_PT = figs.fig_PT(
+            PT=self.pRT_model.PT, 
+            ax=ax_PT, 
+            fig=fig,
+            # xlim=(x1,x2), 
+            bestfit_color=self.bestfit_color,
+            envelopes_color=self.bestfit_color,
+            int_contr_em_color='red',
+            # fig_name=self.run_dir / f'plots/retrieval_PT_profile.pdf',
+            )
+        
+        fig.savefig(self.run_dir / f'plots/retrieval_summary_{fig_label}.pdf')
+        print(f' - Saved {self.run_dir / f"plots/retrieval_summary_{fig_label}.pdf"}')
+            
+        if self.evaluation:
+            # fig_name = self.run_dir / f'plots/cornerplot_{self.cb_count}.pdf'
+            # figs.simple_cornerplot(posterior, 
+            #                     labels, 
+            #                     fig_name=fig_name)                
+            figs.fig_bestfit_model(
+                self.d_spec, 
+                self.m_spec,
+                self.loglike,
+                Cov=None,
+                xlabel=r'Wavelength [nm]',
+                ylabel=r'Flux [erg/s/cm$^2$/cm]',
+                bestfit_color=self.bestfit_color,
+                fig_name=self.run_dir / f'plots/retrieval_bestfit_model_{fig_label}.pdf',
+                )
+            figs.fig_PT(
+                    PT=self.pRT_model.PT, 
+                    # xlim=(x1,x2), 
+                    bestfit_color=self.bestfit_color,
+                    envelopes_color=self.bestfit_color,
+                    int_contr_em_color='red',
+                    fig_name=self.run_dir / f'plots/retrieval_PT_profile_{fig_label}.pdf',
+                    )
         
         
         

@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import json
 
 import corner
 
@@ -89,6 +90,28 @@ class Parameters:
         # fig.savefig('sample_prior.pdf', bbox_inches='tight')
         plt.show()
         return p
+    
+    def save(self, filename):
+        '''Save free parameters and constant parameters and priors as json file'''
+        import json
+        with open(filename, 'w') as f:
+            # json.dump(self.params, f)
+            free_params = {k:[priors, v] 
+                           for k, priors, v 
+                           in zip(self.param_keys, self.param_priors.values(), self.param_mathtext.values())}
+            json.dump({'free_params': free_params, 
+                       'constant_params': self.params}, f)
+        print(f'Parameters saved to {filename}')
+        
+    @classmethod
+    def load(cls, filename):
+        '''Load free parameters and constant parameters and priors from json file'''
+            
+        with open(filename, 'r') as f:
+            params_data = json.load(f)
+        
+        return cls(params_data['free_params'], params_data['constant_params'])
+            
     
        
        

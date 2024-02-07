@@ -10,7 +10,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_004'
+run = 'testing_005'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -20,20 +20,19 @@ plots_dir.mkdir(parents=True, exist_ok=True)
     
 # Instantiate the parser
 parser = argparse.ArgumentParser()
-parser.add_argument('--pre_processing', '-p', action='store_true', default=False)
-parser.add_argument('--prior_check', '-c', action='store_true', default=False)
+parser.add_argument('--pre_processing', '-p', action='store_true', default=True)
+parser.add_argument('--prior_check', '-c', action='store_true', default=True)
 parser.add_argument('--retrieval', '-r', action='store_true', default=False)
 parser.add_argument('--evaluation', '-e', action='store_true', default=False)
 args = parser.parse_args()
 
-cache = True
+cache = False
 ## Define parameters
 free_params = {
     # GPs
-    'log_a': [(-1,0.5), r'$\log\ a$'], 
-    'log_l': [(-2,-0.8), r'$\log\ l$'], 
-    
-    
+    # 'log_a': [(-1,0.5), r'$\log\ a$'], 
+    # 'log_l': [(-2,-0.8), r'$\log\ l$'], 
+
     'log_g': [(2.5,5.5), r'$\log\ g$'], 
 
     'vsini' : ([2.0, 16.0], r'$v \sin(i)$ [km/s]'),
@@ -57,14 +56,25 @@ constant_params = {
     'log_P_knots': [2, 1, -1, -5], # [log(bar)]
     'R_p'    : 1.0,
     'distance': 133.3, # [pc] Gaia EDR3 parallactic distance from Bailer-Jones et al. (2021)
-    'log_g' : 4.0,
+    # 'log_g' : 4.0,
     'epsilon_limb' : 0.5,
     
 }
-parameters = Parameters(free_params, constant_params)
 
+parameters_file = run_dir / 'parameters.json'
+cache = True
+
+if parameters_file.exists() and cache:
+    print(f'--> Loading parameters from file {parameters_file}...')
+    parameters = Parameters.load(parameters_file)
+    
+else:
+    parameters = Parameters(free_params, constant_params)
+    parameters.save(parameters_file)
+
+    
 if args.pre_processing:
-    print('Pre-processing...')
+    print('--> Pre-processing...')
     # Run the pre-processing
 
     ## Load data
@@ -90,7 +100,7 @@ if args.pre_processing:
     
     ## Prepare pRT model
     if (run_dir / 'atm.pickle').exists() and cache:
-        print('Loading precomputed pRT model...')
+        print(' Loading precomputed pRT model...')
         pRT = pRT_model().pickle_load(run_dir / 'atm.pickle')
     else:
         line_species_dict = {
@@ -123,7 +133,7 @@ if args.pre_processing:
 
 if args.prior_check:
     import matplotlib.pyplot as plt
-    print('Prior predictive check...')
+    print('--> Prior predictive check...')
     
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
@@ -182,7 +192,7 @@ if args.prior_check:
     
 
 if args.retrieval:
-    print('Retrieval...')
+    print('--> Retrieval...')
     ### Init retrieval object
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
@@ -196,11 +206,12 @@ if args.retrieval:
     # mpiexec -np 64 python run_retrieval.py -r
     
 if args.evaluation:
-    print('Evaluation...')
+    print('--> Evaluation...')
     # Load the retrieval object
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT)
+    ret = Retrieval(parameters, d_spec, pRT, run=run)
+    
     ret.evaluation = True
     ret.PMN_callback(
             n_samples=None, 

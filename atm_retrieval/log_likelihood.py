@@ -86,6 +86,9 @@ class LogLikelihood:
                 # Chi-squared for optimal linear scaling and uncertainty scaling
                 chi_squared_ij = 1/beta_ij**2 * chi_squared_ij_scaled
                 
+                # reduced chi-squared
+                self.chi_squared_reduced = chi_squared_ij / (N_ij - self.n_params)
+                
                 
                 # Add chi-squared and optimal uncertainty scaling terms to log-likelihood
                 ln_L_ij += -(N_ij/2*np.log(beta_ij**2) + 1/2*chi_squared_ij)
