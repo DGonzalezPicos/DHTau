@@ -3,6 +3,8 @@ os.environ['OMP_NUM_THREADS'] = '1'
 from mpi4py import MPI
 import time
 import pickle
+import corner 
+import matplotlib.pyplot as plt
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -101,14 +103,14 @@ class Retrieval:
                           ln_Z_err, 
                           nullcontext
                           ):
-        self.CB.active = True
+        # self.CB.active = True
 
         if self.evaluation:
 
             # Set-up analyzer object
             analyzer = pymultinest.Analyzer(
-                n_params=self.Param.n_params, 
-                outputfiles_basename=self.conf.prefix
+                n_params=self.parameters.n_params, 
+                outputfiles_basename=f'{self.output_dir}/pmn_',
                 )
             stats = analyzer.get_stats()
 
@@ -118,6 +120,13 @@ class Retrieval:
 
             # Read the parameters of the best-fitting model
             bestfit_params = np.array(stats['modes'][0]['maximum a posterior'])
+            
+            # PT envelopes
+            temperature_env = []
+            for sample in posterior:
+                self.parameters.params.add_sample(sample)
+                self.pRT_model.get_temperature(self.parameters.params)
+                temperature_env.append(self.pRT_model.temperature)
 
         else:
 
@@ -131,11 +140,11 @@ class Retrieval:
             return
 
         # Evaluate the model with best-fitting parameters
-        for i, key_i in enumerate(self.parameters.param_keys):
-            # Update the Parameters instance
-            self.parameters.params[key_i] = bestfit_params[i]
-            if key_i.startswith('log_'):
-                self.Param.params = self.Param.log_to_linear(self.Param.params, key_i)
+        # for i, key_i in enumerate(self.parameters.param_keys):
+        #     # Update the Parameters instance
+        #     self.parameters.params[key_i] = bestfit_params[i]
+        #     if key_i.startswith('log_'):
+        #         self.parameters.params = self.parameters.log_to_linear(self.Param.params, key_i)
 
         # # Update the parameters
         # # self.parameters.read_PT_params(cube=None)
@@ -156,17 +165,17 @@ class Retrieval:
         # simple cornerplot
         print(f'Best-fitting parameters: {bestfit_params}')
         
-        labels = [v[-1] for k,v in self.conf.free_params.items()]
+        labels = np.array(list(self.parameters.param_mathtext.values()))
         
         # get quantiles for ranges
-        quantiles = np.array(
-                [quantiles(samples[:,i], q=[0.16,0.5,0.84]) \
-                for i in range(samples.shape[1])]
+        Q = np.array(
+                [quantiles(posterior[:,i], q=[0.16,0.5,0.84]) \
+                for i in range(posterior.shape[1])]
                 )
             
         ranges = np.array(
             [(4*(q_i[0]-q_i[1])+q_i[1], 4*(q_i[2]-q_i[1])+q_i[1]) \
-                for q_i in quantiles]
+                for q_i in Q]
             )
         
         fontsize = 12

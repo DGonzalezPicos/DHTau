@@ -20,9 +20,10 @@ plots_dir.mkdir(parents=True, exist_ok=True)
     
 # Instantiate the parser
 parser = argparse.ArgumentParser()
-parser.add_argument('--pre_processing', '-p', action='store_true', default=True)
-parser.add_argument('--prior_check', '-c', action='store_true', default=True)
+parser.add_argument('--pre_processing', '-p', action='store_true', default=False)
+parser.add_argument('--prior_check', '-c', action='store_true', default=False)
 parser.add_argument('--retrieval', '-r', action='store_true', default=False)
+parser.add_argument('--evaluation', '-e', action='store_true', default=False)
 args = parser.parse_args()
 
 cache = True
@@ -193,3 +194,23 @@ if args.retrieval:
     # call this file from the command line (with modules loaded and environment activated) as follows:
     # replace 64 by the number of CPU cores available
     # mpiexec -np 64 python run_retrieval.py -r
+    
+if args.evaluation:
+    print('Evaluation...')
+    # Load the retrieval object
+    d_spec = pickle_load(run_dir / 'd_spec.pickle')
+    pRT = pickle_load(run_dir / 'atm.pickle')
+    ret = Retrieval(parameters, d_spec, pRT)
+    ret.evaluation = True
+    ret.PMN_callback(
+            n_samples=None, 
+            n_live=None, 
+            n_params=None, 
+            live_points=None, 
+            posterior=None, 
+            stats=None,
+            max_ln_L=None, 
+            ln_Z=None, 
+            ln_Z_err=None, 
+            nullcontext=None
+            )

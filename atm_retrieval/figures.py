@@ -68,3 +68,4 @@ def fig_spec_to_fit(d_spec, prefix=None, w_set='', overplot_array=None, fig_name
     print(f' Figure saved as {fig_name}')
     #plt.show()
     plt.close(fig)
+    

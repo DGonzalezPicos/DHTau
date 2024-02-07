@@ -12,7 +12,7 @@ from atm_retrieval.retrieval import Retrieval
 
 
 
-run = 'testing_000'
+run = 'testing_004'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 
 assert run_dir.exists()
