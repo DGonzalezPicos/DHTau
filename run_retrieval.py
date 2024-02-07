@@ -20,8 +20,8 @@ plots_dir.mkdir(parents=True, exist_ok=True)
     
 # Instantiate the parser
 parser = argparse.ArgumentParser()
-parser.add_argument('--pre_processing', '-p', action='store_true', default=True)
-parser.add_argument('--prior_check', '-c', action='store_true', default=True)
+parser.add_argument('--pre_processing', '-p', action='store_true', default=False)
+parser.add_argument('--prior_check', '-c', action='store_true', default=False)
 parser.add_argument('--retrieval', '-r', action='store_true', default=False)
 parser.add_argument('--evaluation', '-e', action='store_true', default=False)
 args = parser.parse_args()
@@ -204,6 +204,7 @@ if args.retrieval:
     # call this file from the command line (with modules loaded and environment activated) as follows:
     # replace 64 by the number of CPU cores available
     # mpiexec -np 64 python run_retrieval.py -r
+    # Dario: for some reason LEM only works with up to 64 cpus at the moment...
     
 if args.evaluation:
     print('--> Evaluation...')
