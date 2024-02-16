@@ -22,6 +22,8 @@ plots_dir.mkdir(parents=True, exist_ok=True)
 parser = argparse.ArgumentParser()
 parser.add_argument('--pre_processing', '-p', action='store_true', default=False)
 parser.add_argument('--prior_check', '-c', action='store_true', default=False)
+parser.add_argument('--pre_processing', '-p', action='store_true', default=False)
+parser.add_argument('--prior_check', '-c', action='store_true', default=False)
 parser.add_argument('--retrieval', '-r', action='store_true', default=False)
 parser.add_argument('--evaluation', '-e', action='store_true', default=False)
 args = parser.parse_args()
@@ -103,19 +105,21 @@ if args.pre_processing:
         print(' Loading precomputed pRT model...')
         pRT = pRT_model().pickle_load(run_dir / 'atm.pickle')
     else:
+        # ls /net/lem/data2/pRT_input_data/opacities/lines/line_by_line/
         line_species_dict = {
             
             'H2O': 'H2O_pokazatel_main_iso',
             '12CO': 'CO_high',
             '13CO': 'CO_36_high',
             'Na': 'Na_allard',
+            'Ca': 'Ca',
         }
         pRT = pRT_model(line_species_dict=line_species_dict,
                         d_spec=d_spec,
                         mode='lbl',
                         lbl_opacity_sampling=5,
                         rayleigh_species=['H2', 'He'],
-                        continuum_opacities=['H2-H2', 'H2-He'],
+                        continuum_opacities=['H2-H2', 'H2-He', 'H-'],
                         log_P_range=(-5,2),
                         n_atm_layers=30,
                         rv_range=(-50,50))
@@ -196,15 +200,16 @@ if args.retrieval:
     ### Init retrieval object
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT, run=run)
-
+    ret = Retrieval(parameters, d_spec, pRT)
+    # ret.n_live_points = 200
+    # ret.n_iter_before_update = 100
     # uncomment line below to run the retrieval
     ret.PMN_run()
     
     # call this file from the command line (with modules loaded and environment activated) as follows:
     # replace 64 by the number of CPU cores available
     # mpiexec -np 64 python run_retrieval.py -r
-    # Dario: for some reason LEM only works with up to 64 cpus at the moment...
+    # mpiexec --use-hwthread-cpus --bind-to none -np 80 python run_retrieval.py -r
     
 if args.evaluation:
     print('--> Evaluation...')
