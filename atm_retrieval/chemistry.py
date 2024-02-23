@@ -84,6 +84,10 @@ class Chemistry:
         H += self.species_info['H2'][1][2] * (1.0 - VMR_wo_H2)
         self.mass_fractions['H'] = self.species_info['H'][0] * H
         
+        # add mass fractions for H- continuum opacity (using solar values)
+        self.mass_fractions['H-'] = 6e-9 # solar
+        self.mass_fractions['e-'] = 1e-10 # solar
+        
         # Mean Molecular Weight        
         MMW = 0.
         for mass_i in self.mass_fractions.values():
