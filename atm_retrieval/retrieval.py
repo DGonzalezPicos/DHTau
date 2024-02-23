@@ -105,7 +105,9 @@ class Retrieval:
                     ln_Z_err, 
                     nullcontext
                     ):
-
+        self.cb_count += 1
+        print(f' - Callback {self.cb_count}')
+        
         if self.evaluation:
 
             # Set-up analyzer object
