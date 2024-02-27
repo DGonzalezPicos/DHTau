@@ -88,39 +88,37 @@ def fig_PT(PT,
     
     p = PT.pressure
     if hasattr(PT, 'int_contr_em'):
-        # Plot the integrated contribution emission
-        ax_twin = ax.twiny()
-        ax_twin.plot(
-            PT.int_contr_em, p, 
-            c='red', lw=1, alpha=0.4,
-            )
-
-        
-        
-        weigh_alpha(PT.int_contr_em, p, np.linspace(0,10000,p.size), ax, alpha_min=0.5, plot=True)
-        # define photosphere as region where PT.int_contr_em > np.quantile(PT.int_contr_em, 0.9)
-        photosphere = PT.int_contr_em > np.quantile(PT.int_contr_em, 0.95)
-        P_phot = np.mean(p[photosphere])
-        T_phot = np.mean(PT.temperature_envelopes[3][photosphere])
-        T_phot_err = np.std(PT.temperature_envelopes[3][photosphere])
-        # print(f' - Photospheric temperature: {T_phot:.1f} +- {T_phot_err:.1f} K')
-        # make empty marker
-        ax.scatter(T_phot, P_phot, c='red',
-                    marker='o', 
-                    s=50, 
-                    alpha=0.5,
-                    zorder=10,
-                    label=f'T$_\mathrm{{phot}}$ = {T_phot:.0f} $\pm$ {T_phot_err:.0f} K')
-        
-        
-        # remove xticks
-        ax_twin.set_xticks([])
-        ax_twin.spines['top'].set_visible(False)
-        ax_twin.spines['bottom'].set_visible(False)
-        ax_twin.set(
-            # xlabel='Integrated contribution emission',
-            xlim=(0,np.max(PT.int_contr_em)*1.1),
-            )
+        if np.max(PT.int_contr_em) > 0.0: # additional check
+            # Plot the integrated contribution emission
+            ax_twin = ax.twiny()
+            ax_twin.plot(
+                PT.int_contr_em, p, 
+                c='red', lw=1, alpha=0.4,
+                )
+            weigh_alpha(PT.int_contr_em, p, np.linspace(0,10000,p.size), ax, alpha_min=0.5, plot=True)
+            # define photosphere as region where PT.int_contr_em > np.quantile(PT.int_contr_em, 0.9)
+            photosphere = PT.int_contr_em > np.quantile(PT.int_contr_em, 0.95)
+            P_phot = np.mean(p[photosphere])
+            T_phot = np.mean(PT.temperature_envelopes[3][photosphere])
+            T_phot_err = np.std(PT.temperature_envelopes[3][photosphere])
+            # print(f' - Photospheric temperature: {T_phot:.1f} +- {T_phot_err:.1f} K')
+            # make empty marker
+            ax.scatter(T_phot, P_phot, c='red',
+                        marker='o', 
+                        s=50, 
+                        alpha=0.5,
+                        zorder=10,
+                        label=f'T$_\mathrm{{phot}}$ = {T_phot:.0f} $\pm$ {T_phot_err:.0f} K')
+            
+            
+            # remove xticks
+            ax_twin.set_xticks([])
+            ax_twin.spines['top'].set_visible(False)
+            ax_twin.spines['bottom'].set_visible(False)
+            ax_twin.set(
+                # xlabel='Integrated contribution emission',
+                xlim=(0,np.max(PT.int_contr_em)*1.1),
+                )
         
     # Plot the PT confidence envelopes
     for i in range(3):

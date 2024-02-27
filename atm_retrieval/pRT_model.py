@@ -42,7 +42,7 @@ class pRT_model:
         self.rv_max = max(np.abs(list(rv_range)))
         
         # Set up the pressure-temperature profile
-        self.pressure = np.logspace(log_P_range[0], log_P_range[1], n_atm_layers)
+        self.pressure = np.logspace(min(log_P_range), max(log_P_range), n_atm_layers)
 
 
     def get_atmospheres(self, CB_active=False):
@@ -250,7 +250,11 @@ class pRT_model:
         T_knots = [params[key] for key in T_knots_keys]
         
         self.PT = PT(self.pressure)
-        self.temperature = self.PT.spline(params['log_P_knots'], T_knots)               
+        self.temperature = self.PT.spline(params['log_P_knots'], T_knots) 
+        
+        assert np.all(np.isfinite(self.temperature)), 'Temperature profile contains NaNs or Infs'
+        assert np.all(self.temperature > 0), 'Temperature profile contains non-positive values'
+        # # check pressure vector          
         return self.temperature
     
     def get_integrated_contr_em(self,

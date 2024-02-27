@@ -61,7 +61,10 @@ class Retrieval:
         
         self.m_spec = self.pRT_model(self.parameters.params, get_contr=self.evaluation)
         lnL = self.loglike(self.m_spec)
-        return lnL
+        if np.isfinite(lnL):
+            return lnL
+        else:
+            return -np.inf
     
     def PMN_run(self):
         

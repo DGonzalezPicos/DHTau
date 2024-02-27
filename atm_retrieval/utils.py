@@ -63,7 +63,11 @@ def weigh_alpha(contr_em, pressure, temperature, ax, alpha_min=0.8, plot=False):
     '''
 
     from scipy.interpolate import interp1d
-    contr_em_weigh = contr_em / contr_em.max()
+    # print(f' Max contribution function: {np.nanmax(contr_em)}')
+    if np.nanmax(contr_em) == 0.0:
+        print(f'[INFO] No *valid* emission contribution function found. Setting alpha to 1.')
+        return np.ones_like(pressure)
+    contr_em_weigh = contr_em / np.nanmax(contr_em)
     contr_em_weigh = np.nan_to_num(contr_em_weigh, nan=0.0)
 
     contr_em_weigh_interp = interp1d(pressure, contr_em_weigh)

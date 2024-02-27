@@ -10,7 +10,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_001'
+run = 'testing_006'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -204,9 +204,9 @@ if args.retrieval:
     ### Init retrieval object
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT)
+    ret = Retrieval(parameters, d_spec, pRT, run=run)
     # ret.n_live_points = 200
-    # ret.n_iter_before_update = 100
+    ret.n_iter_before_update = 1
     # uncomment line below to run the retrieval
     ret.PMN_run()
     
