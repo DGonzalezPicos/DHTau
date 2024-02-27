@@ -10,18 +10,20 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_006'
+run = 'testing_001'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
 plots_dir = run_dir / 'plots'
 plots_dir.mkdir(parents=True, exist_ok=True)
     
+'''
+parser.add_argument('--pre_processing', '-p', action='store_true', default=False)
+parser.add_argument('--prior_check', '-c', action='store_true', default=False)
+'''
     
 # Instantiate the parser
 parser = argparse.ArgumentParser()
-parser.add_argument('--pre_processing', '-p', action='store_true', default=False)
-parser.add_argument('--prior_check', '-c', action='store_true', default=False)
 parser.add_argument('--pre_processing', '-p', action='store_true', default=False)
 parser.add_argument('--prior_check', '-c', action='store_true', default=False)
 parser.add_argument('--retrieval', '-r', action='store_true', default=False)
@@ -46,6 +48,7 @@ free_params = {
 
     'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
     'log_Na'   : ([-12, -2], r'$\log$(Na)'),
+    #'log_Ca'   : ([-12, -2], r'$\log$(Ca)'),
     
     # temperature profile
     'T1' : ([5000, 8000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
@@ -84,7 +87,7 @@ if args.pre_processing:
     d_spec = DataSpectrum(file_target=file_data, 
                           slit='w_0.2', 
                           flux_units='photons',
-                          wave_range=[2200, 2480])
+                          wave_range=[2320, 2480])
     d_spec.preprocess(
         file_transm='data/DHTauA_molecfit_transm.dat',
         tell_threshold=0.4,
@@ -112,14 +115,14 @@ if args.pre_processing:
             '12CO': 'CO_high',
             '13CO': 'CO_36_high',
             'Na': 'Na_allard',
-            'Ca': 'Ca',
+            #'Ca': 'Ca',
         }
         pRT = pRT_model(line_species_dict=line_species_dict,
                         d_spec=d_spec,
                         mode='lbl',
                         lbl_opacity_sampling=5,
                         rayleigh_species=['H2', 'He'],
-                        continuum_opacities=['H2-H2', 'H2-He', 'H-'],
+                        continuum_opacities=['H2-H2', 'H2-He' ], #, 'H-'],
                         log_P_range=(-5,2),
                         n_atm_layers=30,
                         rv_range=(-50,50))
