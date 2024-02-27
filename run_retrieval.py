@@ -53,12 +53,13 @@ free_params = {
     # temperature profile
     'T1' : ([5000, 8000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
     'T2' : ([1000, 6000], r'$T_2$ [K]'),
-    'T3' : ([600, 3000], r'$T_3$ [K]'),
-    'T4' : ([200,  2000],  r'$T_4$ [K]'),
+    'T3' : ([600,  6000],  r'$T_3$ [K]'),
+    'T4' : ([600, 3000], r'$T_4$ [K]'),
+    'T5' : ([200,  2000],  r'$T_5$ [K]'),
 }
 
 constant_params = {
-    'log_P_knots': [2, 0, -2, -5], # [log(bar)]
+    'log_P_knots': [2, 0, -1, -2, -5], # [log(bar)]
     'R_p'    : 1.0,
     'distance': 133.3, # [pc] Gaia EDR3 parallactic distance from Bailer-Jones et al. (2021)
     # 'log_g' : 4.0,
