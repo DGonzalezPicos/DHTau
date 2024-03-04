@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_003'
+run = 'testing_007'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -49,6 +49,7 @@ free_params = {
 
     'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
     'log_Na'   : ([-12, -2], r'$\log$(Na)'),
+    'log_HF'   : ([-12, -2], r'$\log$(HF)'),
     #'log_Ca'   : ([-12, -2], r'$\log$(Ca)'),
     
     # temperature profile
@@ -92,14 +93,16 @@ if args.pre_processing:
                           wave_range=[2320, 2480])
     d_spec.preprocess(
         file_transm='data/DHTauA_molecfit_transm.dat',
-        tell_threshold=0.4,
-        n_edge_pixels=30,
-        sigma_clip=3,
-        sigma_clip_window=11,
+        tell_threshold=0.70,
+        tell_grow_mask=30,
+        n_edge_pixels=40,
+        sigma_clip=5,
+        sigma_clip_window=51,
         ra=67.422516,
         dec=26.54998,
         mjd=59945.15094260,
-        fig_name=plots_dir / 'preprocessed_spec.pdf'
+        # fig_name=plots_dir / 'preprocessed_spec.pdf' # deprecated
+        fig_dir = plots_dir
         )
     d_spec.pickle_save(run_dir / 'd_spec.pickle')
     print(f' Preprocessed spectrum saved to {run_dir / "d_spec.pickle"}')
@@ -117,6 +120,7 @@ if args.pre_processing:
             '12CO': 'CO_high',
             '13CO': 'CO_36_high',
             'Na': 'Na_allard',
+            'HF': 'HF_main_iso',
             #'Ca': 'Ca',
         }
         pRT = pRT_model(line_species_dict=line_species_dict,

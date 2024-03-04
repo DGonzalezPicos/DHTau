@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter1d, gaussian_filter, generic_filter
+import warnings
 
 from PyAstronomy import pyasl
 import petitRADTRANS.nat_cst as nc
@@ -164,6 +165,8 @@ class Spectrum:
         assert np.sum(mask_wave) > 0, 'No data points found in wavelength range'
         
         self.flux[~mask_wave] = np.nan
+        if hasattr(self, 'flux_uncorr'):
+            self.flux_uncorr[~mask_wave] = np.nan
         return self
     
     def flatten(self, debug=False):
@@ -307,6 +310,7 @@ class DataSpectrum(Spectrum):
             self.resolution = 5e4
 
         self.wave_range = wave_range
+        self.reshaped = False # default
         
     
         
@@ -364,6 +368,7 @@ class DataSpectrum(Spectrum):
 
         # Remove empty orders / detectors
         self.clear_empty_orders_dets()
+        self.reshaped = True
 
         # Update the isfinite mask
         self.update_isfinite_mask()
@@ -400,12 +405,15 @@ class DataSpectrum(Spectrum):
 
                 self.flux[idx_low : idx_low + n_edge_pixels]   = np.nan
                 self.flux[idx_high - n_edge_pixels : idx_high] = np.nan
+                if hasattr(self, 'flux_uncorr'):
+                    self.flux_uncorr[idx_low : idx_low + n_edge_pixels]   = np.nan
+                    self.flux_uncorr[idx_high - n_edge_pixels : idx_high] = np.nan
 
         # Update the isfinite mask
         self.update_isfinite_mask()
         return self
     
-    def load_molecfit_transm(self, file_transm, tell_threshold=0.0):
+    def load_molecfit_transm(self, file_transm):
 
         # Load the pre-computed transmission from molecfit
         molecfit = np.loadtxt(file_transm).T
@@ -418,8 +426,10 @@ class DataSpectrum(Spectrum):
         self.wave_transm, self.transm, self.cont_transm = np.loadtxt(file_transm, unpack=True)
         # self.transm_err = self.err/np.where(self.transm<=0.0, 1.0, self.transm) 
 
-        mask_high_transm = (self.transm > tell_threshold)
-        mask = (self.mask_isfinite & mask_high_transm)
+        # mask_high_transm = (self.transm > tell_threshold)
+        # mask = (self.mask_isfinite & mask_high_transm)
+        # if tell_grow_mask > 0:
+        #     mask = generic_filter(mask, np.nanmax, size=tell_grow_mask)
         self.throughput = self.cont_transm.reshape(np.shape(self.wave))
         self.throughput /= np.nanmax(self.throughput)
         return None
@@ -478,9 +488,49 @@ class DataSpectrum(Spectrum):
 
         return flux_copy
     
+    def sigma_clip(self, sigma=3, filter_width=11, 
+                   replace_flux=True,
+                   fig_name=None,
+                   debug=True,
+                    ):
+        '''Sigma clip flux values of reshaped DataSpectrum instance'''
+        assert self.reshaped, 'DataSpectrum instance not reshaped, use reshape_orders_dets()'
+        # np.seterr(invalid='ignore')
+
+        flux_copy = self.flux.copy()
+        clip_mask = np.zeros_like(flux_copy, dtype=bool)
+        for order in range(self.n_orders):
+            for det in range(self.n_dets):
+                flux = self.flux[order,det]
+                mask = np.isfinite(flux)
+                if mask.any():
+                    # with np.errstate(invalid='ignore'):
+                    with warnings.catch_warnings():
+                        # ignore numpy RuntimeWarning: Mean of empty slice
+                        warnings.filterwarnings("ignore", category=RuntimeWarning)
+                        filtered_flux_i = generic_filter(flux, np.nanmedian, size=filter_width)
+                    residuals = flux - filtered_flux_i
+                    nans = np.isnan(residuals)
+                    mask_clipped = nans | (np.abs(residuals) > sigma*np.nanstd(residuals))
+                    flux_copy[order,det,mask_clipped] = np.nan
+                    clip_mask[order,det] = mask_clipped
+                    if debug:
+                        print(f' [sigma_clip] Order {order}, Detector {det}: {mask_clipped.sum()-nans.sum()} pixels clipped')
+                        
+        if fig_name is not None:
+            figs.fig_sigma_clip(self, clip_mask, fig_name=fig_name)
+            
+        if replace_flux:
+            self.flux = flux_copy
+            self.update_isfinite_mask()
+            return self
+            
+        return flux_copy
+    
     def preprocess(self,
                    file_transm=None,
                    tell_threshold=0.7,
+                   tell_grow_mask=0,
                    n_edge_pixels=30,
                    ra=None,
                    dec=None,
@@ -488,7 +538,8 @@ class DataSpectrum(Spectrum):
                    flux_calibration_factor=1.8e-10,
                    sigma_clip=3.0,
                    sigma_clip_window=11,
-                   fig_name=None,
+                #    fig_name=None,
+                fig_dir=None,
                    ):
         '''Wrapper function to apply all preprocessing steps to 
         get the data ready for retrievals'''
@@ -496,16 +547,23 @@ class DataSpectrum(Spectrum):
         print(f'** Preprocessing data **\n----------------------')
         # Load Telluric model (fitted to the data with Molecfit)
         # molecfit_spec = DataSpectrum(file_target='data/DHTauA_molecfit_transm.dat', slit='w_0.4', flux_units='')
-        self.load_molecfit_transm(file_transm, tell_threshold)
+        self.load_molecfit_transm(file_transm)
 
         # Divide by the molecfit spectrum 
         # throughput = molecfit_spec.err # read as the third column (fix name)  
+        self.flux_uncorr = np.copy(self.flux) / self.throughput
         zeros = self.transm <= 0.01
         self.flux = np.divide(self.flux, self.transm * self.throughput, where=np.logical_not(zeros))
         self.err = np.divide(self.err, self.transm * self.throughput, where=np.logical_not(zeros))
-        print(f' Telluric correction applied (threshold = {tell_threshold})')
+        print(f' Telluric correction applied (threshold = {tell_threshold:.1f})')
         # mask regions with deep telluric lines
         tell_mask = self.transm < tell_threshold
+        if tell_grow_mask > 0:
+            print(f' Growing telluric mask by {tell_grow_mask} pixels')
+            tell_mask = np.convolve(tell_mask, np.ones(tell_grow_mask), mode='same') > 0
+            nans = np.isnan(self.flux)
+            mask_fraction = (tell_mask.sum()-nans.sum())/tell_mask.size
+            print(f' Masking deep tellurics ({100*mask_fraction:.1f} % of pixels)')
         self.flux[tell_mask] = np.nan
         
         print(f' Edge pixels clipped: {n_edge_pixels}')
@@ -524,20 +582,40 @@ class DataSpectrum(Spectrum):
             self.ra, self.dec, self.mjd = ra, dec, mjd
             self.bary_corr()
             
-        if sigma_clip is not None:
-            self.sigma_clip_median_filter(sigma=sigma_clip, filter_width=sigma_clip_window, debug=False)
-            print(f' Sigma clipped at {sigma_clip} sigma')
-            
         self.crop_spectrum()
         print(f' Spectrum cropped to {self.wave_range} nm')
         self.update_isfinite_mask()
+        
+        # if sigma_clip is not None:
+            # flux_unclip = np.copy(self.flux)
+            # nans_before = np.isnan(self.flux).sum()
+            # self.sigma_clip_median_filter(sigma=sigma_clip, filter_width=sigma_clip_window, debug=False)
+            # nans_after = np.isnan(self.flux).sum()
+            # clipped_fraction = (nans_after-nans_before)/self.flux.size
+            # print(f' Sigma clipped at {sigma_clip} sigma ({100*clipped_fraction:.1f} % of pixels)')
+            # self.sigma_clip(sigma=sigma_clip, filter_width=sigma_clip_window, replace_flux=True, debug=True)
+
 
         
         self.reshape_orders_dets()
         print(f' Data reshaped into orders and detectors')
         
-        if fig_name is not None:
-            figs.fig_spec_to_fit(self, fig_name=fig_name)
+        if sigma_clip is not None:
+            self.sigma_clip(sigma=sigma_clip, filter_width=sigma_clip_window, 
+                            replace_flux=True, 
+                            fig_name=f'{fig_dir}/sigma_clipped_spec.pdf',
+                            debug=True)
+        # plot sigma clipped spectrum
+        
+        
+        # if fig_name is not None:
+        #     figs.fig_spec_to_fit(self, fig_name=fig_name)
+        if fig_dir is not None:
+            self.flux_uncorr *= flux_calibration_factor
+            # figs.fig_telluric_correction(self, fig_dir=f'{fig_dir}/telluric_correction.pdf')
+            figs.fig_spec_to_fit(self, 
+                                 overplot_array=self.flux_uncorr,
+                                 fig_name=f'{fig_dir}/preprocessed_spec.pdf') 
         
         print(f' Preprocessing complete!\n')
         return self
