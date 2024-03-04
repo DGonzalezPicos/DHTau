@@ -88,7 +88,7 @@ if args.pre_processing:
     ## Load data
     file_data = 'data/DHTauA.dat'
     d_spec = DataSpectrum(file_target=file_data, 
-                          slit='w_0.2', 
+                          slit='w_0.4', 
                           flux_units='photons',
                           wave_range=[2320, 2480])
     d_spec.preprocess(
