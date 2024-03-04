@@ -71,6 +71,33 @@ def fig_spec_to_fit(d_spec, prefix=None, w_set='', overplot_array=None, fig_name
     #plt.show()
     plt.close(fig)
     
+def fig_sigma_clip(d_spec, clip_mask, fig_name=None):
+    
+    assert d_spec.flux.shape == clip_mask.shape, 'Shapes of d_spec.flux and flux_clip do not match'
+    ylabel = r'$F_\lambda\ (\mathrm{erg\ s^{-1}\ cm^{-2}\ nm^{-1}})$'
+    fig, ax = fig_order_subplots(d_spec.n_orders, ylabel=ylabel)
+
+    for i in range(d_spec.n_orders):
+        for j in range(d_spec.n_dets):
+            
+            mask = clip_mask[i,j]
+            f_clip = np.where(mask, d_spec.flux[i,j], np.nan)
+            f_clean  = np.where(~mask, d_spec.flux[i,j], np.nan) 
+            ax[i].plot(d_spec.wave[i,j], f_clip, c='r', lw=0.5)
+            # if overplot_array is not None:
+            ax[i].plot(d_spec.wave[i,j], f_clean, c='k', lw=1, alpha=0.9)
+        
+        ax[i].set(xlim=(d_spec.order_wlen_ranges[i].min()-0.5, 
+                        d_spec.order_wlen_ranges[i].max()+0.5)
+                  )
+
+    if fig_name is not None:
+        fig_name = fig_name if fig_name is not None else prefix+f'plots/spec_to_fit_{w_set}.pdf'
+        plt.savefig(fig_name)
+        print(f' Figure saved as {fig_name}')
+        #plt.show()
+        plt.close(fig)
+    return fig, ax
 def fig_PT(PT,
             ax=None, 
             fig=None,
