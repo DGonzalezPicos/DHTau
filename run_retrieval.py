@@ -202,6 +202,8 @@ if args.prior_check:
 
 if args.retrieval:
     print('--> Retrieval...')
+    ret_start_time = time.time()
+
     ### Init retrieval object
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
@@ -210,6 +212,12 @@ if args.retrieval:
     ret.n_iter_before_update = 200
     # uncomment line below to run the retrieval
     ret.PMN_run()
+
+    ret_end_time = time.time()
+    ret_duration = (ret_end_time - ret_start_time)
+    print('Retrieval time:', ret_duration, 'seconds')
+    with open(run_dir / 'retrieval_time.txt', 'w') as f:
+        f.write('{}'.format(ret_duration))
     
     # call this file from the command line (with modules loaded and environment activated) as follows:
     # replace 64 by the number of CPU cores available
@@ -218,7 +226,6 @@ if args.retrieval:
     
 if args.evaluation:
     print('--> Evaluation...')
-    ret_start_time = time.time()
 
     # Load the retrieval object
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
@@ -238,10 +245,3 @@ if args.evaluation:
             ln_Z_err=None, 
             nullcontext=None
             )
-    
-    ret_end_time = time.time()
-    ret_duration = ret_end_time - ret_start_time
-
-    ret_duration.save( run_dir / 'retrieval_time.txt')
-
-    print('Retrieval time:', ret_duration, 'seconds')
