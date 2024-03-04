@@ -1,5 +1,6 @@
 import numpy as np
 import pathlib
+import time
 
 import argparse
 
@@ -10,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_006'
+run = 'testing_003'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -206,7 +207,7 @@ if args.retrieval:
     pRT = pickle_load(run_dir / 'atm.pickle')
     ret = Retrieval(parameters, d_spec, pRT, run=run)
     # ret.n_live_points = 200
-    ret.n_iter_before_update = 1
+    ret.n_iter_before_update = 200
     # uncomment line below to run the retrieval
     ret.PMN_run()
     
@@ -217,6 +218,8 @@ if args.retrieval:
     
 if args.evaluation:
     print('--> Evaluation...')
+    ret_start_time = time.time()
+
     # Load the retrieval object
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
@@ -235,3 +238,10 @@ if args.evaluation:
             ln_Z_err=None, 
             nullcontext=None
             )
+    
+    ret_end_time = time.time()
+    ret_duration = ret_end_time - ret_start_time
+
+    ret_duration.save( run_dir / 'retrieval_time.txt')
+
+    print('Retrieval time:', ret_duration, 'seconds')

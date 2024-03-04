@@ -141,7 +141,7 @@ def fig_PT(PT,
             ylim=(p.max(), p.min()), yscale='log',
             xlim=xlim,
             )
-    ax.legend(loc='upper right', fontsize=12)
+    #ax.legend(loc='upper right', fontsize=12)
     
     if fig_name is not None:
         fig.savefig(fig_name)
