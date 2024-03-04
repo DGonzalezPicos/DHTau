@@ -58,7 +58,7 @@ def fig_spec_to_fit(d_spec, prefix=None, w_set='', overplot_array=None, fig_name
         for j in range(d_spec.n_dets):
             ax[i].plot(d_spec.wave[i,j], d_spec.flux[i,j], c='k', lw=0.5)
             if overplot_array is not None:
-                ax[i].plot(d_spec.wave[i,j], overplot_array[i,j], c='magenta', lw=1)
+                ax[i].plot(d_spec.wave[i,j], overplot_array[i,j], c='brown', lw=1, alpha=0.3)
         
         ax[i].set(xlim=(d_spec.order_wlen_ranges[i].min()-0.5, 
                         d_spec.order_wlen_ranges[i].max()+0.5)

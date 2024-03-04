@@ -98,7 +98,8 @@ if args.pre_processing:
         ra=67.422516,
         dec=26.54998,
         mjd=59945.15094260,
-        fig_name=plots_dir / 'preprocessed_spec.pdf'
+        # fig_name=plots_dir / 'preprocessed_spec.pdf' # deprecated
+        fig_dir = plots_dir
         )
     d_spec.pickle_save(run_dir / 'd_spec.pickle')
     print(f' Preprocessed spectrum saved to {run_dir / "d_spec.pickle"}')

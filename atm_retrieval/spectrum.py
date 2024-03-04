@@ -164,6 +164,8 @@ class Spectrum:
         assert np.sum(mask_wave) > 0, 'No data points found in wavelength range'
         
         self.flux[~mask_wave] = np.nan
+        if hasattr(self, 'flux_uncorr'):
+            self.flux_uncorr[~mask_wave] = np.nan
         return self
     
     def flatten(self, debug=False):
@@ -400,6 +402,9 @@ class DataSpectrum(Spectrum):
 
                 self.flux[idx_low : idx_low + n_edge_pixels]   = np.nan
                 self.flux[idx_high - n_edge_pixels : idx_high] = np.nan
+                if hasattr(self, 'flux_uncorr'):
+                    self.flux_uncorr[idx_low : idx_low + n_edge_pixels]   = np.nan
+                    self.flux_uncorr[idx_high - n_edge_pixels : idx_high] = np.nan
 
         # Update the isfinite mask
         self.update_isfinite_mask()
@@ -488,7 +493,8 @@ class DataSpectrum(Spectrum):
                    flux_calibration_factor=1.8e-10,
                    sigma_clip=3.0,
                    sigma_clip_window=11,
-                   fig_name=None,
+                #    fig_name=None,
+                fig_dir=None,
                    ):
         '''Wrapper function to apply all preprocessing steps to 
         get the data ready for retrievals'''
@@ -500,6 +506,7 @@ class DataSpectrum(Spectrum):
 
         # Divide by the molecfit spectrum 
         # throughput = molecfit_spec.err # read as the third column (fix name)  
+        self.flux_uncorr = np.copy(self.flux) / self.throughput
         zeros = self.transm <= 0.01
         self.flux = np.divide(self.flux, self.transm * self.throughput, where=np.logical_not(zeros))
         self.err = np.divide(self.err, self.transm * self.throughput, where=np.logical_not(zeros))
@@ -536,8 +543,14 @@ class DataSpectrum(Spectrum):
         self.reshape_orders_dets()
         print(f' Data reshaped into orders and detectors')
         
-        if fig_name is not None:
-            figs.fig_spec_to_fit(self, fig_name=fig_name)
+        # if fig_name is not None:
+        #     figs.fig_spec_to_fit(self, fig_name=fig_name)
+        if fig_dir is not None:
+            self.flux_uncorr *= flux_calibration_factor
+            # figs.fig_telluric_correction(self, fig_dir=f'{fig_dir}/telluric_correction.pdf')
+            figs.fig_spec_to_fit(self, 
+                                 overplot_array=self.flux_uncorr,
+                                 fig_name=f'{fig_dir}/preprocessed_spec.pdf') 
         
         print(f' Preprocessing complete!\n')
         return self
