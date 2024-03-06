@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_007'
+run = 'testing_008'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -53,11 +53,19 @@ free_params = {
     #'log_Ca'   : ([-12, -2], r'$\log$(Ca)'),
     
     # temperature profile
-    'T1' : ([5000, 8000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
-    'T2' : ([1000, 6000], r'$T_2$ [K]'),
-    'T3' : ([600,  6000],  r'$T_3$ [K]'),
-    'T4' : ([600, 3000], r'$T_4$ [K]'),
-    'T5' : ([200,  2000],  r'$T_5$ [K]'),
+    # 'T1' : ([5000, 8000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
+    # 'T2' : ([1000, 6000], r'$T_2$ [K]'),
+    # 'T3' : ([600,  6000],  r'$T_3$ [K]'),
+    # 'T4' : ([600, 3000], r'$T_4$ [K]'),
+    # 'T5' : ([200,  2000],  r'$T_5$ [K]'),
+    
+    # temperature gradients
+    'T1': ([3000, 10000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
+    'dlnT_dlnP_1': [(0.0, 0.40), r'$\nabla T_1$'],
+    'dlnT_dlnP_2': [(0.0, 0.40), r'$\nabla T_2$'],
+    'dlnT_dlnP_3': [(0.0, 0.40), r'$\nabla T_3$'],
+    'dlnT_dlnP_4': [(0.0, 0.40), r'$\nabla T_4$'],
+    'dlnT_dlnP_5': [(-0.10, 0.40), r'$\nabla T_5$'],
 }
 
 constant_params = {
@@ -93,8 +101,8 @@ if args.pre_processing:
                           wave_range=[2320, 2480])
     d_spec.preprocess(
         file_transm='data/DHTauA_molecfit_transm.dat',
-        tell_threshold=0.70,
-        tell_grow_mask=30,
+        tell_threshold=0.65,
+        tell_grow_mask=21,
         n_edge_pixels=40,
         sigma_clip=5,
         sigma_clip_window=51,
@@ -126,11 +134,11 @@ if args.pre_processing:
         pRT = pRT_model(line_species_dict=line_species_dict,
                         d_spec=d_spec,
                         mode='lbl',
-                        lbl_opacity_sampling=5,
+                        lbl_opacity_sampling=10, # set to 10 for speed, 5 for accuracy
                         rayleigh_species=['H2', 'He'],
                         continuum_opacities=['H2-H2', 'H2-He' ], #, 'H-'],
                         log_P_range=(-5,2),
-                        n_atm_layers=30,
+                        n_atm_layers=20, # set to 20 for speed, 30 for accuracy
                         rv_range=(-50,50))
         
 
@@ -170,7 +178,7 @@ if args.prior_check:
 
         # plot model spectrum and PT profile
         dict_str = [f'{key_i} = {ret.parameters.params[key_i]}' for key_i in ret.parameters.param_keys]
-        ax[0].text(0.0, 1.16 - 0.05*i, '   '.join(dict_str), transform=ax[0].transAxes, fontsize=12, color=colors[i])
+        # ax[0].text(0.0, 1.16 - 0.05*i, '   '.join(dict_str), transform=ax[0].transAxes, fontsize=12, color=colors[i])
 
         m_spec.wave = ret.d_spec.wave
         
@@ -212,8 +220,8 @@ if args.retrieval:
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
     ret = Retrieval(parameters, d_spec, pRT, run=run)
-    # ret.n_live_points = 200
-    ret.n_iter_before_update = 200
+    ret.n_live_points = 200
+    # ret.n_iter_before_update = 1
     # uncomment line below to run the retrieval
     ret.PMN_run()
 
