@@ -242,19 +242,30 @@ class pRT_model:
         
         # check key in dictionary
         assert 'log_P_knots' in params.keys(), 'log_P_knots not in params.keys()'
-        # Select the temperature knots
-        T_knots_keys = sorted([k for k in params.keys() if k.startswith('T') and len(k)==2])
-        # T1 = params['T1']
-        assert T_knots_keys[0] == 'T1'
-        # important to sort them from bottom to top (T1, T2, ...)
-        T_knots = [params[key] for key in T_knots_keys]
         
         self.PT = PT(self.pressure)
-        self.temperature = self.PT.spline(params['log_P_knots'], T_knots) 
+
+        if 'T2' in params.keys():
+            # Select the temperature knots
+            T_knots_keys = sorted([k for k in params.keys() if k.startswith('T') and len(k)==2])
+            # T1 = params['T1']
+            assert T_knots_keys[0] == 'T1'
+            # important to sort them from bottom to top (T1, T2, ...)
+            T_knots = [params[key] for key in T_knots_keys]
+            
+            self.temperature = self.PT.spline(params['log_P_knots'], T_knots) 
+        elif 'dlnT_dlnP_1' in params.keys():
+            # Select the temperature gradients
+            dlnT_dlnP_keys = sorted([k for k in params.keys() if k.startswith('dlnT_dlnP')])
+            dlnT_dlnP = [params[key] for key in dlnT_dlnP_keys]
+            assert len(dlnT_dlnP) == len(params['log_P_knots']), 'dlnT_dlnP and log_P_knots must have the same length'
+            self.temperature = self.PT.gradient(params['T1'], params['log_P_knots'], dlnT_dlnP, kind='linear')
+            
+        # set negative values to 1e-1 K
+        self.temperature[self.temperature < 1.] = 1e-1
         
         assert np.all(np.isfinite(self.temperature)), 'Temperature profile contains NaNs or Infs'
         assert np.all(self.temperature > 0), 'Temperature profile contains non-positive values'
-        # # check pressure vector          
         return self.temperature
     
     def get_integrated_contr_em(self,
