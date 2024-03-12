@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_007'
+run = 'testing_006'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -53,11 +53,11 @@ free_params = {
     #'log_Ca'   : ([-12, -2], r'$\log$(Ca)'),
     
     # temperature profile
-    'T1' : ([5000, 8000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
-    'T2' : ([1000, 6000], r'$T_2$ [K]'),
-    'T3' : ([600,  6000],  r'$T_3$ [K]'),
-    'T4' : ([600, 3000], r'$T_4$ [K]'),
-    'T5' : ([200,  2000],  r'$T_5$ [K]'),
+    'T1' : ([100, 10000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
+    'T2' : ([100, 10000], r'$T_2$ [K]'),
+    'T3' : ([100, 10000],  r'$T_3$ [K]'),
+    'T4' : ([100, 10000], r'$T_4$ [K]'),
+    'T5' : ([100, 10000],  r'$T_5$ [K]'),
 }
 
 constant_params = {
@@ -88,7 +88,7 @@ if args.pre_processing:
     ## Load data
     file_data = 'data/DHTauA.dat'
     d_spec = DataSpectrum(file_target=file_data, 
-                          slit='w_0.2', 
+                          slit='w_0.4', 
                           flux_units='photons',
                           wave_range=[2320, 2480])
     d_spec.preprocess(
