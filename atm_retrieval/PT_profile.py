@@ -81,8 +81,9 @@ class PT:
         # temperature defined from bottom to top (high to low pressure)
         self.temperature = [T_0]
         for i in range(1, self.n_atm_layers):
-            self.temperature.append(self.temperature[i-1] * np.exp(np.log(self.pressure[i-1]/self.pressure[i]) * self.dlnT_dlnP[i-1]))
-        
+
+            t_i = self.temperature[i-1] * (np.exp(np.log(pressure_decreasing[i]/pressure_decreasing[i-1]) * self.dlnT_dlnP[i-1]))
+            self.temperature.append(t_i)
         self.temperature = np.array(self.temperature[::-1])
         self.dlnT_dlnP = self.dlnT_dlnP[::-1]
         
@@ -104,15 +105,17 @@ class PT:
                xlabel='Temperature [K]', ylabel='Pressure [bar]')
         return ax
     
-    def plot_gradient(self, ax=None, fig_name=None, **kwargs):
+    def plot_gradient(self, ax=None, fig_name=None, fill=False, **kwargs):
         if ax is None:
             fig, ax = plt.subplots(1, 2, figsize=(9, 6), sharey=True, gridspec_kw={'wspace':0.05,
                                                                                     'width_ratios': [1.5, 3]})
             
         # ax[0] is for gradient
         lw = kwargs.pop('linewidth', 2)
-        ax[0].plot(self.dlnT_dlnP, self.pressure, color='green', lw=lw, **kwargs)
-        ax[1].plot(self.temperature, self.pressure,color='brown', lw=lw, **kwargs)
+        color = kwargs.pop('color', 'blue')
+        label = kwargs.pop('label', '')
+        ax[0].plot(self.dlnT_dlnP, self.pressure, color=color, lw=lw, **kwargs)
+        ax[1].plot(self.temperature, self.pressure,color=color, lw=lw,label=label, **kwargs)
         
         for i, P_i in enumerate(self.P_knots):
             ax[0].axhline(P_i, color='k', linestyle='--', alpha=0.4)
@@ -120,7 +123,7 @@ class PT:
             ax[0].text(0.02, P_i, f'log P = {np.log10(P_i):.1f}', color='red', verticalalignment='bottom')
             # ax[1].text(0.05, P_i, f'log P = {np.log10(P_i):.1f}', color='red')
             # ax[1].axhspan(P_i, self.temperature[i], color='red', alpha=0.3 * self.dlnT_dlnP_knots[i] / self.dlnT_dlnP_knots.max())
-            if i < len(self.P_knots) - 1:
+            if (i < len(self.P_knots) - 1) and fill:
                 alpha = np.mean([self.dlnT_dlnP_knots[i], self.dlnT_dlnP_knots[i+1]]) / (self.dlnT_dlnP_knots.max() - self.dlnT_dlnP_knots.min())
                 alpha = max(0.0, alpha)
                 ax[1].fill_between([0., 20e3], P_i, self.P_knots[i+1], color='g', alpha=0.3*alpha)
@@ -135,7 +138,8 @@ class PT:
                xlabel='Temperature [K]',
                xlim=(xlim[0] - xpad, xlim[1] + xpad))
         if fig_name is not None:
-            fig.suptitle(r'PT profile from temperature gradients', fontsize=16, y=0.94)
+            plt.suptitle(r'PT profile from temperature gradients', fontsize=16, y=0.94)
+            ax[1].legend()
             plt.savefig(fig_name)
             print(f' PT profile with gradient saved to {fig_name}')
             plt.close()
@@ -146,9 +150,9 @@ if __name__=='__main__':
     # Structure of the atmosphere
     logP_max = 2.0
     logP_min = -5.0
-    n_layers = 30 # plane-parallel layers
+    n_layers = 50 # plane-parallel layers
     pressure = np.logspace(logP_min, logP_max, n_layers) # from top to bottom
-    log_P_knots = np.linspace(logP_max, logP_min, 8) # bottom to top
+    log_P_knots = np.linspace(logP_max, logP_min, 4) # bottom to top
     
     # Initialize the PT class
     pt = PT(pressure)
@@ -163,9 +167,30 @@ if __name__=='__main__':
     # New temperature profile from gradients
     # Below we plot the generated temperature profile and gradients for different spline interpolations
     # If the number of knots is high (>5), linear interpolation is recommended
-    spline_kind =['linear', 'quadratic', 'cubic']
-    for kind in spline_kind:
-        temperature_grad = pt.gradient(6000, log_P_knots, [0.18, 0.11, 0.25, 0.12, 0.05, 0.08, 0.06, 0.04], kind=kind)
-        pt.plot_gradient(fig_name = f'PT_profile_grad_{kind}.pdf')
+    spline_kind =['linear', 'quadratic']
+    dlnT_dlnP = [
+        0.20,
+        0.11,
+        0.11,
+        # 0.12,
+        # 0.25,
+        # 0.12,
+        # 0.04,
+        # 0.16,
+        # 0.04,
+        # 0.06,
+        0.04,
+        # 0.08,
+    ]
+    # for kind in spline_kind:
+    temperature_grad = pt.gradient(6000, log_P_knots, dlnT_dlnP, kind='linear')
+    ax = pt.plot_gradient(color='b', label='linear', fill=False, alpha=0.7)
+
+    temperature_grad = pt.gradient(6000, log_P_knots, dlnT_dlnP, kind='quadratic')
+    ax = pt.plot_gradient(ax=ax, color='g', label='quadratic', fill=False, alpha=0.7)
+
+    temperature_grad = pt.gradient(6000, log_P_knots, dlnT_dlnP, kind='cubic')
+    ax = pt.plot_gradient(ax=ax, color='darkorange', label='cubic', fill=False, alpha=0.7,
+                          fig_name = f'PT_profile_grad{len(log_P_knots)}_linear_quadratic_cubic.pdf')
     
     
