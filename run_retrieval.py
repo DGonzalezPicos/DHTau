@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_008'
+run = 'testing_010'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -94,13 +94,15 @@ if args.pre_processing:
     # Run the pre-processing
 
     ## Load data
-    file_data = 'data/DHTauA.dat'
+    # file_data = 'data/DHTauA.dat'
+    file_data = 'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC2D.dat' # DGP (2024-03-27)
     d_spec = DataSpectrum(file_target=file_data, 
                           slit='w_0.4', 
                           flux_units='photons',
                           wave_range=[2320, 2480])
     d_spec.preprocess(
-        file_transm='data/DHTauA_molecfit_transm.dat',
+        # file_transm='data/DHTauA_molecfit_transm.dat',
+        file_transm=None, # included in `file_target` now
         tell_threshold=0.65,
         tell_grow_mask=21,
         n_edge_pixels=40,
@@ -134,11 +136,13 @@ if args.pre_processing:
         pRT = pRT_model(line_species_dict=line_species_dict,
                         d_spec=d_spec,
                         mode='lbl',
-                        lbl_opacity_sampling=10, # set to 10 for speed, 5 for accuracy
+                        # WARNING: setting `lbl_opacity_sampling = 10` underestimates vsini
+                        # and can lead to wrong log_g and PT profiles
+                        lbl_opacity_sampling=5, # set to 10 for speed, 5 for accuracy
                         rayleigh_species=['H2', 'He'],
                         continuum_opacities=['H2-H2', 'H2-He' ], #, 'H-'],
                         log_P_range=(-5,2),
-                        n_atm_layers=20, # set to 20 for speed, 30 for accuracy
+                        n_atm_layers=30, # set to 20 for speed, 30 for accuracy
                         rv_range=(-50,50))
         
 
