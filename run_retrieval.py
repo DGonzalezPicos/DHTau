@@ -12,6 +12,7 @@ from atm_retrieval.utils import pickle_load, pickle_save
 
 
 run = 'testing_010'
+run = 'testing_010'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -50,7 +51,10 @@ free_params = {
     'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
     'log_Na'   : ([-12, -2], r'$\log$(Na)'),
     'log_HF'   : ([-12, -2], r'$\log$(HF)'),
-    #'log_Ca'   : ([-12, -2], r'$\log$(Ca)'),
+    'log_Ca'   : ([-12, -2], r'$\log$(Ca)'),
+    'log_Ti'   : ([-12, -2], r'$\log$(Ti)'),
+    'log_CN'   : ([-12, -2], r'$\log$(CN)'),
+    'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
     
     # temperature profile
     # 'T1' : ([5000, 8000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
@@ -61,7 +65,7 @@ free_params = {
     
     # temperature gradients
     'T1': ([3000, 10000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
-    'dlnT_dlnP_1': [(0.0, 0.40), r'$\nabla T_1$'],
+    'dlnT_dlnP_1': [(0.0, 0.50), r'$\nabla T_1$'],
     'dlnT_dlnP_2': [(0.0, 0.40), r'$\nabla T_2$'],
     'dlnT_dlnP_3': [(0.0, 0.40), r'$\nabla T_3$'],
     'dlnT_dlnP_4': [(0.0, 0.40), r'$\nabla T_4$'],
@@ -99,7 +103,7 @@ if args.pre_processing:
     d_spec = DataSpectrum(file_target=file_data, 
                           slit='w_0.4', 
                           flux_units='photons',
-                          wave_range=[2320, 2480])
+                          wave_range=[2140, 2500])
     d_spec.preprocess(
         # file_transm='data/DHTauA_molecfit_transm.dat',
         file_transm=None, # included in `file_target` now
@@ -131,7 +135,10 @@ if args.pre_processing:
             '13CO': 'CO_36_high',
             'Na': 'Na_allard',
             'HF': 'HF_main_iso',
-            #'Ca': 'Ca',
+            'Ca': 'Ca',
+            'Ti': 'Ti',
+            'CN': 'CN_main_iso',
+            'Mg': 'Mg'
         }
         pRT = pRT_model(line_species_dict=line_species_dict,
                         d_spec=d_spec,
