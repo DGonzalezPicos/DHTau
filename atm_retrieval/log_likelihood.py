@@ -41,7 +41,7 @@ class LogLikelihood:
                 N_ij = mask_ij.sum()
                 
                 if N_ij == 0: # skip if no valid data points
-                    print(f'Warning: no valid data points in order {i}, detector {j}')
+                    # print(f'Warning: no valid data points in order {i}, detector {j}')
                     continue
                 
                 m_flux_ij = m_spec.flux[i,j,mask_ij]

@@ -570,6 +570,21 @@ class DataSpectrum(Spectrum):
             
         return flux_copy
     
+    def fill_nans(self, min_finite_pixels=100, debug=True):
+        '''Fill NaNs order-detector pairs with less than `min_finite_pixels` finite pixels'''
+        assert self.reshaped, 'The spectrum has not been reshaped yet!'
+        
+        for order in range(self.n_orders):
+            for det in range(self.n_dets):
+                mask_ij = self.mask_isfinite[order,det]
+                if mask_ij.sum() < min_finite_pixels:
+                    if debug:
+                        print(f'[fill_nans] Order {order}, detector {det} has only {mask_ij.sum()} finite pixels!')
+                    self.flux[order,det,:] = np.nan * np.ones_like(self.flux[order,det,:])
+                    # self.err[order,det,~mask_ij] = np.nanmedian(self.err[order,det,mask_ij])
+        self.update_isfinite_mask()
+        return self
+    
     def preprocess(self,
                    file_transm=None,
                    tell_threshold=0.7,
@@ -642,6 +657,7 @@ class DataSpectrum(Spectrum):
 
         
         self.reshape_orders_dets()
+        self.fill_nans(min_finite_pixels=200)
         print(f' Data reshaped into orders and detectors')
         
         if sigma_clip is not None:

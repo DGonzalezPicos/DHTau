@@ -12,7 +12,6 @@ from atm_retrieval.utils import pickle_load, pickle_save
 
 
 run = 'testing_010'
-run = 'testing_010'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -103,12 +102,12 @@ if args.pre_processing:
     d_spec = DataSpectrum(file_target=file_data, 
                           slit='w_0.4', 
                           flux_units='photons',
-                          wave_range=[2140, 2500])
+                          wave_range=[1990, 2480])
     d_spec.preprocess(
         # file_transm='data/DHTauA_molecfit_transm.dat',
         file_transm=None, # included in `file_target` now
-        tell_threshold=0.65,
-        tell_grow_mask=21,
+        tell_threshold=0.50,
+        tell_grow_mask=31,
         n_edge_pixels=40,
         sigma_clip=5,
         sigma_clip_window=51,
@@ -195,6 +194,10 @@ if args.prior_check:
         
         for order in range(m_spec.n_orders):
             for det in range(m_spec.n_dets):
+                mask_ij = ret.d_spec.mask_isfinite[order, det, :]
+                if mask_ij.sum() == 0:
+                    continue
+                
                 m_spec.flux[order, det] *= ret.loglike.f[order, det]
                 label = r'$\log \mathcal{L}$ = ' + f'{log_L:.4e}' if (order+det)==0 else None
 
