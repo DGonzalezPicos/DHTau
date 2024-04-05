@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_010'
+run = 'testing_013'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -53,7 +53,10 @@ free_params = {
     'log_Ca'   : ([-12, -2], r'$\log$(Ca)'),
     'log_Ti'   : ([-12, -2], r'$\log$(Ti)'),
     'log_CN'   : ([-12, -2], r'$\log$(CN)'),
-    'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
+    #'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
+    'log_Fe'   : ([-12, -2], r'$\log$(Fe)'),
+    'log_Al'   : ([-12, -2], r'$\log$(Al)'),
+    
     
     # temperature profile
     # 'T1' : ([5000, 8000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
@@ -101,7 +104,7 @@ if args.pre_processing:
     d_spec = DataSpectrum(file_target=file_data, 
                           slit='w_0.4', 
                           flux_units='photons',
-                          wave_range=[2140, 2500])
+                          wave_range=[2050, 2500])
     d_spec.preprocess(
         file_transm='data/DHTauA_molecfit_transm.dat',
         tell_threshold=0.65,
@@ -135,7 +138,9 @@ if args.pre_processing:
             'Ca': 'Ca',
             'Ti': 'Ti',
             'CN': 'CN_main_iso',
-            'Mg': 'Mg'
+            #'Mg': 'Mg',
+            'Fe': 'Fe',
+            'Al': 'Al'
         }
         pRT = pRT_model(line_species_dict=line_species_dict,
                         d_spec=d_spec,
