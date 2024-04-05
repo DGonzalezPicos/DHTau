@@ -100,15 +100,17 @@ if args.pre_processing:
     # Run the pre-processing
 
     ## Load data
-    file_data = 'data/DHTauA.dat'
+    # file_data = 'data/DHTauA.dat'
+    file_data = 'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC2D.dat' # DGP (2024-03-27)
     d_spec = DataSpectrum(file_target=file_data, 
                           slit='w_0.4', 
                           flux_units='photons',
-                          wave_range=[2050, 2500])
+                          wave_range=[1990, 2480])
     d_spec.preprocess(
-        file_transm='data/DHTauA_molecfit_transm.dat',
-        tell_threshold=0.65,
-        tell_grow_mask=21,
+        # file_transm='data/DHTauA_molecfit_transm.dat',
+        file_transm=None, # included in `file_target` now
+        tell_threshold=0.50,
+        tell_grow_mask=31,
         n_edge_pixels=40,
         sigma_clip=5,
         sigma_clip_window=51,
@@ -145,6 +147,8 @@ if args.pre_processing:
         pRT = pRT_model(line_species_dict=line_species_dict,
                         d_spec=d_spec,
                         mode='lbl',
+                        # WARNING: setting `lbl_opacity_sampling = 10` underestimates vsini
+                        # and can lead to wrong log_g and PT profiles
                         lbl_opacity_sampling=5, # set to 10 for speed, 5 for accuracy
                         rayleigh_species=['H2', 'He'],
                         continuum_opacities=['H2-H2', 'H2-He' ], #, 'H-'],
@@ -195,6 +199,10 @@ if args.prior_check:
         
         for order in range(m_spec.n_orders):
             for det in range(m_spec.n_dets):
+                mask_ij = ret.d_spec.mask_isfinite[order, det, :]
+                if mask_ij.sum() == 0:
+                    continue
+                
                 m_spec.flux[order, det] *= ret.loglike.f[order, det]
                 label = r'$\log \mathcal{L}$ = ' + f'{log_L:.4e}' if (order+det)==0 else None
 

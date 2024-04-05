@@ -253,9 +253,44 @@ class Spectrum:
             self = self.pickle_load(file)
             
         elif extension in ['txt', 'dat']:
-            self.wave, self.flux, self.err = np.loadtxt(file).T
+            # self.wave, self.flux, self.err = np.loadtxt(file).T
+            data = np.loadtxt(file).T
+            print(f'Loading data (shape={data.shape}) from {file}')
+            if len(data) == 3:
+                self.wave, self.flux, self.err = data
+            elif len(data) == 6: # New file format with 6 columns
+                self.wave, self.flux, self.err = data[:3]
+                self.transm, self.cont_transm, self.nans = data[3:]
+                
+                # apply Nans to flux
+                # Nans = True at the edges, outliers from Molecfit and wave exclude in Molecfit preprocessing
+                self.flux[self.nans.astype(bool)] = np.nan
         return self
 
+    @staticmethod    
+    def planck(wave, Teff):
+        '''Calculate Planck function for a given wavelength and temperature
+        Parameters
+        ----------
+            wave : np.array
+                Wavelength in nm
+            Teff : float
+                Effective temperature of standard star in K
+                
+        Returns
+        -------
+            flux_bb : np.array
+                Planck function in flux units [erg/s/cm2/nm]'''
+        
+        # wavelength in cm, all constants in cgs units
+        wave_cm = wave * 1e-7 
+        flux_bb = np.pi * nc.b(Teff, nc.c / wave_cm) # blackbody flux in [erg/s/cm2/Hz]
+        # convert [erg/s/cm2/Hz] -> [erg/s/cm2/cm]
+        flux_bb *= nc.c / wave_cm**2
+        # convert [erg/s/cm2/cm] -> [erg/s/cm2/nm]
+        flux_bb *= 1e-7
+        return flux_bb
+        
     
 
 class DataSpectrum(Spectrum):
@@ -268,10 +303,11 @@ class DataSpectrum(Spectrum):
                  dec=None,
                  mjd=None,
                  file_target=None, 
-                 file_wave=None, 
+                 file_wave=None, # deprecated
                  slit='w_0.2', 
                  wave_range=(1900,2500), 
-                 flux_units='photons'
+                 flux_units='photons',
+                 Teff_standard=None,
                  ):
         
         # Save additional information to calculate barycentric correction
@@ -279,28 +315,38 @@ class DataSpectrum(Spectrum):
         self.dec = dec
         self.mjd = mjd
 
+        # Set to None initially
+        # self.transm, self.transm_err = None, None
+        
         if file_target is not None:
             data = np.loadtxt(file_target).T
-            # read only first 3 columns
+            # first 3 columns
             wave, flux, err = data[0], data[1], data[2]
+            if len(data) == 6:
+                # 6 columns: [wave, flux, err, transm, cont_transm, nans]
+                self.transm, self.cont_transm, nans = data[3:]
+                self.nans = nans.astype(bool)
             
         # Load in (other) corrected wavelengths
         if file_wave is not None:
             wave, _, _ = np.loadtxt(file_wave).T
             
         self.flux_units = flux_units
+        ref_flux = 1.0 if Teff_standard is None else self.planck(wave, Teff_standard)
         if self.flux_units == 'photons':
             # Convert from [photons] to [erg nm^-1]
             flux /= wave
             err /= wave
+            if hasattr(self, 'cont_transm'):
+                self.throughput = self.cont_transm / wave
+                self.throughput /= ref_flux # remove blackbody of standard-star from throughput
 
         super().__init__(wave, flux, err)
 
         # Reshape the orders and detectors
         #self.reshape_orders_dets()
 
-        # Set to None initially
-        self.transm, self.transm_err = None, None
+
 
         # Get the spectral resolution
         self.slit = slit
@@ -413,23 +459,20 @@ class DataSpectrum(Spectrum):
         self.update_isfinite_mask()
         return self
     
-    def load_molecfit_transm(self, file_transm):
+    def load_molecfit_transm(self, file_transm=None):
 
         # Load the pre-computed transmission from molecfit
-        molecfit = np.loadtxt(file_transm).T
+        if not hasattr(self, 'cont_transm'):
+            assert file_transm is not None, 'No molecfit transmission file found'
+            molecfit = np.loadtxt(file_transm).T
+            
+            # Confirm that we are using the same wavelength grid
+            assert((self.wave == molecfit[0]).all())
         
-        # Confirm that we are using the same wavelength grid
-        assert((self.wave == molecfit[0]).all())
-    
+            
+            assert len(molecfit) == 3, f'Expected 3 columns [wave, trans, continuum] in {file_transm}, got {len(molecfit)}'
+            self.wave_transm, self.transm, self.cont_transm = np.loadtxt(file_transm, unpack=True)
         
-        assert len(molecfit) == 3, f'Expected 3 columns [wave, trans, continuum] in {file_transm}, got {len(molecfit)}'
-        self.wave_transm, self.transm, self.cont_transm = np.loadtxt(file_transm, unpack=True)
-        # self.transm_err = self.err/np.where(self.transm<=0.0, 1.0, self.transm) 
-
-        # mask_high_transm = (self.transm > tell_threshold)
-        # mask = (self.mask_isfinite & mask_high_transm)
-        # if tell_grow_mask > 0:
-        #     mask = generic_filter(mask, np.nanmax, size=tell_grow_mask)
         self.throughput = self.cont_transm.reshape(np.shape(self.wave))
         self.throughput /= np.nanmax(self.throughput)
         return None
@@ -527,6 +570,21 @@ class DataSpectrum(Spectrum):
             
         return flux_copy
     
+    def fill_nans(self, min_finite_pixels=100, debug=True):
+        '''Fill NaNs order-detector pairs with less than `min_finite_pixels` finite pixels'''
+        assert self.reshaped, 'The spectrum has not been reshaped yet!'
+        
+        for order in range(self.n_orders):
+            for det in range(self.n_dets):
+                mask_ij = self.mask_isfinite[order,det]
+                if mask_ij.sum() < min_finite_pixels:
+                    if debug:
+                        print(f'[fill_nans] Order {order}, detector {det} has only {mask_ij.sum()} finite pixels!')
+                    self.flux[order,det,:] = np.nan * np.ones_like(self.flux[order,det,:])
+                    # self.err[order,det,~mask_ij] = np.nanmedian(self.err[order,det,mask_ij])
+        self.update_isfinite_mask()
+        return self
+    
     def preprocess(self,
                    file_transm=None,
                    tell_threshold=0.7,
@@ -535,7 +593,7 @@ class DataSpectrum(Spectrum):
                    ra=None,
                    dec=None,
                    mjd=None,
-                   flux_calibration_factor=1.8e-10,
+                   flux_calibration_factor=5e-13,
                    sigma_clip=3.0,
                    sigma_clip_window=11,
                 #    fig_name=None,
@@ -547,7 +605,8 @@ class DataSpectrum(Spectrum):
         print(f'** Preprocessing data **\n----------------------')
         # Load Telluric model (fitted to the data with Molecfit)
         # molecfit_spec = DataSpectrum(file_target='data/DHTauA_molecfit_transm.dat', slit='w_0.4', flux_units='')
-        self.load_molecfit_transm(file_transm)
+        if file_transm is not None:
+            self.load_molecfit_transm(file_transm)
 
         # Divide by the molecfit spectrum 
         # throughput = molecfit_spec.err # read as the third column (fix name)  
@@ -598,6 +657,7 @@ class DataSpectrum(Spectrum):
 
         
         self.reshape_orders_dets()
+        self.fill_nans(min_finite_pixels=200)
         print(f' Data reshaped into orders and detectors')
         
         if sigma_clip is not None:
