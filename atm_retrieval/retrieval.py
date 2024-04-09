@@ -77,7 +77,7 @@ class Retrieval:
     def PMN_run(self):
         
         # Pause the process to not overload memory on start-up
-        time.sleep(0.4*rank)
+        time.sleep(1)
 
         # Run the MultiNest retrieval
         pymultinest.run(
@@ -104,6 +104,24 @@ class Retrieval:
         with open(file, 'rb') as f:
             return pickle.load(f)
         
+    def PMN_analyzer(self):
+        # Set-up analyzer object
+        analyzer = pymultinest.Analyzer(
+            n_params=self.parameters.n_params, 
+            outputfiles_basename=f'{self.run_dir}/pmn_',
+            )
+        stats = analyzer.get_stats()
+
+        # Load the equally-weighted posterior distribution
+        posterior = analyzer.get_equal_weighted_posterior()
+        posterior = posterior[:,:-1]
+
+        # Read the parameters of the best-fitting model
+        bestfit_params = np.array(stats['modes'][0]['maximum a posterior'])
+        return posterior, bestfit_params
+        
+        
+        
     def PMN_callback(self, 
                     n_samples, 
                     n_live, 
@@ -122,18 +140,19 @@ class Retrieval:
         if self.evaluation:
 
             # Set-up analyzer object
-            analyzer = pymultinest.Analyzer(
-                n_params=self.parameters.n_params, 
-                outputfiles_basename=f'{self.run_dir}/pmn_',
-                )
-            stats = analyzer.get_stats()
+            # analyzer = pymultinest.Analyzer(
+            #     n_params=self.parameters.n_params, 
+            #     outputfiles_basename=f'{self.run_dir}/pmn_',
+            #     )
+            # stats = analyzer.get_stats()
 
-            # Load the equally-weighted posterior distribution
-            posterior = analyzer.get_equal_weighted_posterior()
-            posterior = posterior[:,:-1]
+            # # Load the equally-weighted posterior distribution
+            # posterior = analyzer.get_equal_weighted_posterior()
+            # posterior = posterior[:,:-1]
 
-            # Read the parameters of the best-fitting model
-            bestfit_params = np.array(stats['modes'][0]['maximum a posterior'])
+            # # Read the parameters of the best-fitting model
+            # bestfit_params = np.array(stats['modes'][0]['maximum a posterior'])
+            posterior, bestfit_params = self.PMN_analyzer()
             
         else:
 
