@@ -1,5 +1,7 @@
 import numpy as np
+from scipy.optimize import nnls
 
+from atm_retrieval.spline_model import SplineModel
 
 class LogLikelihood:
     
@@ -25,9 +27,11 @@ class LogLikelihood:
         # Calculate the log-likelihood
         self.ln_L = 0.0
         # Array to store the linear flux-scaling terms
-        self.f    = np.ones((self.n_orders, self.n_dets))
+        N_knots = m_spec.N_knots # at least 1
+        self.f    = np.ones((N_knots, self.n_orders, self.n_dets))
         # Array to store the uncertainty-scaling terms
         self.beta = np.ones((self.n_orders, self.n_dets))
+        self.m = np.nan * np.ones_like(self.d_spec.flux)
 
         # n_orders, n_dets = self.d_spec.flux.shape[:2]
         # Loop over all orders and detectors
@@ -53,7 +57,7 @@ class LogLikelihood:
                 # print(f' Mean flux m_flux_ij = {m_flux_ij.mean():.2e}')
                 # print(f' Mean flux d_flux_ij = {d_flux_ij.mean():.2e}')
 
-                res_ij = (d_flux_ij - m_flux_ij)
+                # res_ij = (d_flux_ij - m_flux_ij)
                 # print(f' Mean residual res_ij = {res_ij.mean():.2e}')
                 # Get the log of the determinant (log prevents over/under-flow)
                 # log(det(Cov)) = sum(log(diag(Cov))) for Cov = diag(diag(Cov))
@@ -67,13 +71,32 @@ class LogLikelihood:
                 ln_L_ij = -0.5 * (N_ij*np.log(2*np.pi) + cov_logdet)
                 # ln_L_ij = -0.5 * (N_ij*np.log(2*np.pi))
                 # print(f'ln_L_ij (before chi2) = {ln_L_ij:.2f}')
-                f_ij = 1.0
+                f_ij = [1.0]
                 # if self.scale_flux and (not (i+j)==0): # this is to retrieve the radius
-                if self.scale_flux:
+                # if self.scale_flux:
                     # Only scale the flux relative to the first order/detector
                     # Scale the model flux to minimize the chi-squared error
+                if m_spec.N_knots > 1:
+                    
+                    m_flux_ij_spline = SplineModel(N_knots=m_spec.N_knots, spline_degree=3)(m_flux_ij)
+                   
+                    # line below for Gaussian Process
+                    # phi = nnls(np.dot(m_flux_ij_spline, Cov[i,j].solve(m_flux_ij_spline.T)), 
+                    #            np.dot(m_flux_ij_spline, Cov[i,j].solve(d_flux_ij)))[0]
+                    
+                    # without GP
+                    phi = nnls(m_flux_ij_spline @ inv_cov_ij @ m_flux_ij_spline.T,
+                                m_flux_ij_spline @ inv_cov_ij @ d_flux_ij)[0]
+                               
+                    m_flux_ij_scaled = phi @ m_flux_ij_spline
+                    
+                else:
                     m_flux_ij_scaled, f_ij = self.get_flux_scaling(d_flux_ij, m_flux_ij, inv_cov_ij)
-                    res_ij = (d_flux_ij - m_flux_ij_scaled)
+                    f_ij = np.atleast_1d(f_ij)
+                    
+                # Calculate the residuals
+                res_ij = (d_flux_ij - m_flux_ij_scaled)
+                
                 
                 
                 # Calculate the chi-squared
@@ -98,7 +121,8 @@ class LogLikelihood:
                 self.ln_L += ln_L_ij
                 
                 # Store in the arrays
-                self.f[i,j]    = f_ij
+                self.m[i,j,mask_ij] = m_flux_ij_scaled # scaled model flux (same shape as d_spec.flux)
+                self.f[:,i,j]    = f_ij
                 self.beta[i,j] = beta_ij
                 
         

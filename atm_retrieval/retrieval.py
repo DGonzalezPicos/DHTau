@@ -59,7 +59,15 @@ class Retrieval:
         # sample = self.parameters(cube) # the attribute self.parameters.params is updated
         # self.parameters.add_sample(sample)
         
+
+        
         self.m_spec = self.pRT_model(self.parameters.params, get_contr=self.evaluation)
+        # generate spline model for flux decomposition
+        self.m_spec.N_knots = self.parameters.params.get('N_knots', 1)
+        # print(f'N_knots = {self.m_spec.N_knots}')
+        # if self.m_spec.N_knots > 1:
+        #     self.m_spec.make_spline(self.m_spec.N_knots)
+            
         lnL = self.loglike(self.m_spec)
         if np.isfinite(lnL):
             return lnL

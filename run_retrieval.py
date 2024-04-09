@@ -77,11 +77,12 @@ constant_params = {
     'distance': 133.3, # [pc] Gaia EDR3 parallactic distance from Bailer-Jones et al. (2021)
     # 'log_g' : 4.0,
     'epsilon_limb' : 0.5,
+    'N_knots': 5,
     
 }
 
 parameters_file = run_dir / 'parameters.json'
-cache = True
+cache = False
 
 if parameters_file.exists() and cache:
     print(f'--> Loading parameters from file {parameters_file}...')
@@ -176,14 +177,17 @@ if args.prior_check:
     
 
     colors = ['C0', 'C1', 'C2']
-    theta = [0.0, 0.5, 1.0] # lower edge, center, upper edge
+    # theta = [0.0, 0.5, 1.0] # lower edge, center, upper edge
+    theta = [0.5]
     for i, theta_i in enumerate(theta):
         cube = theta_i * np.ones(ret.parameters.ndim)
         sample = ret.parameters(cube) # transform the cube to the parameter space
         ret.parameters.add_sample(sample) # add the sample to the parameters (create dictionary)
-    
-        m_spec = ret.pRT_model(ret.parameters.params) # generate the model spectrum
+
         
+        m_spec = ret.pRT_model(ret.parameters.params) # generate the model spectrum
+        m_spec.N_knots = ret.parameters.params.get('N_knots', 1)
+            
         log_L = ret.loglike(m_spec)
 
         # plot model spectrum and PT profile
@@ -198,10 +202,12 @@ if args.prior_check:
                 if mask_ij.sum() == 0:
                     continue
                 
-                m_spec.flux[order, det] *= ret.loglike.f[order, det]
+                # f = ret.loglike.f[:, order, det]
+                # model = f @ m_spec.flux_spline[:, order, det] if m_spec.N_knots > 1 else f*m_spec.flux[order, det]
+                model = ret.loglike.m[order, det, :]
                 label = r'$\log \mathcal{L}$ = ' + f'{log_L:.4e}' if (order+det)==0 else None
 
-                ax[0].plot(m_spec.wave[order, det], m_spec.flux[order, det], color=colors[i], alpha=0.8, label=label)
+                ax[0].plot(m_spec.wave[order, det], model, color=colors[i], alpha=0.8, label=label)
             
         ret.pRT_model.PT.plot(ax=ax[1], color=colors[i])
 

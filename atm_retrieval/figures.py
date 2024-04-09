@@ -339,14 +339,19 @@ def fig_bestfit_model(d_spec,
             else:
                 label = 'Best-fit model'
                     
-            f = LogLike.f[i,j]
+            # f = LogLike.f[:,i,j]
+            
             # M = LogLike.M[i,j]
             # linear_model = M * f[:,None] * flux_factor
             # set ~mask to np.nan on last axis
             # linear_model[:,~mask_ij] = np.nan
            
             # model = np.sum(linear_model, axis=0) # full fitted linear model
-            model = f * m_spec.flux[i,j] * flux_factor
+            # model = f * m_spec.flux[i,j] * flux_factor
+            # model = f @ m_spec.flux_spline[:,i,j] if m_spec.N_knots > 1 else f * m_spec.flux[i,j]
+            # model *= flux_factor
+            model = self.loglike.m[i,j,:] * flux_factor
+            
             model[~mask_ij] = np.nan
             ax_spec.plot(x, model, lw=lw, label=label, color=bestfit_color)
 
