@@ -712,6 +712,12 @@ class ModelSpectrum(Spectrum):
         # Model resolution depends on the opacity sampling
         self.resolution = int(1e6/lbl_opacity_sampling)
 
+    def make_spline(self, N_knots=5, spline_degree=3):
+        '''Create a spline model for the spectrum
+        Store new attribute `flux_spline` with the spline model'''
+        self.N_knots = N_knots
+        self.flux_spline = SplineModel(N_knots, spline_degree)(self.flux) # shape (N_knots, *self.flux.shape)
+        return self
     
     
 if __name__ == '__main__':
