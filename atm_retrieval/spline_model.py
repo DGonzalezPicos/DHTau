@@ -101,4 +101,5 @@ if __name__ == '__main__':
     
     # ax.plot(x, slope, label='slope', c='r', ls=':')
     ax.legend()
+    plt.savefig("test.pdf")
     plt.show()
