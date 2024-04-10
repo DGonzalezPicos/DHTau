@@ -32,14 +32,14 @@ ret.PMN_lnL_func()
 m_spec_0 =ret.m_spec
 
 # now generate model without a given species
-# species = 'HF'
-species = 'g'
+species = 'Ca'
+# species = 'g'
 
 params_dict = bestfit_params_dict.copy()
 if species == 'g':
     params_dict['log_g'] = 5.0
 else:
-    params_dict[f'log_{species}'] -= 12.0
+    params_dict[f'log_{species}'] -= 14.0
 # generate the model
 
 ret.parameters.add_sample(list(params_dict.values()))
