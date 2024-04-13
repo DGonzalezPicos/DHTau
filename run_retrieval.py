@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_015'
+run = 'run_iso_0'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -48,11 +48,15 @@ free_params = {
     'log_13CO': [(-12,-2), r'$\log\ \mathrm{^{13}CO}$'], 
 
     'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
-    'log_Na'   : ([-12, -2], r'$\log$(Na)'),
-    'log_HF'   : ([-12, -2], r'$\log$(HF)'),
-    'log_Ca'   : ([-12, -2], r'$\log$(Ca)'),
-    'log_Ti'   : ([-12, -2], r'$\log$(Ti)'),
-    'log_CN'   : ([-12, -2], r'$\log$(CN)'),
+    
+    # isotologue of water with 18O
+    'log_H2O_181': ([-12, -2], r'$\log\ \mathrm{H_2^{18}O}$'),
+    'log_Na'   : ([-12, -2], r'$\log$\ Na'),
+    'log_HF'   : ([-12, -2], r'$\log$\ HF'),
+    'log_Ca'   : ([-12, -2], r'$\log$\ Ca'),
+    'log_Ti'   : ([-12, -2], r'$\log$\ Ti'),
+    'log_CN'   : ([-12, -2], r'$\log$\ CN'),
+    'log_13CN' : ([-12, -2], r'$\log\ \mathrm{^{13}CN}$'),
     #'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
     #'log_Fe'   : ([-12, -2], r'$\log$(Fe)'),
     #'log_Al'   : ([-12, -2], r'$\log$(Al)'),
@@ -134,6 +138,7 @@ if args.pre_processing:
         line_species_dict = {
             
             'H2O': 'H2O_pokazatel_main_iso',
+            'H2O_181': 'H2O_181',
             '12CO': 'CO_high',
             '13CO': 'CO_36_high',
             'Na': 'Na_allard',
@@ -141,6 +146,7 @@ if args.pre_processing:
             'Ca': 'Ca',
             'Ti': 'Ti',
             'CN': 'CN_main_iso',
+            '13CN': 'CN_34_high',
             #'Mg': 'Mg',
             #'Fe': 'Fe',
             #'Al': 'Al'
