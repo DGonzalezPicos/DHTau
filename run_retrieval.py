@@ -48,12 +48,15 @@ free_params = {
     'log_13CO': [(-12,-2), r'$\log\ \mathrm{^{13}CO}$'], 
 
     'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
-    'log_Na'   : ([-12, -2], r'$\log$(Na)'),
-    'log_HF'   : ([-12, -2], r'$\log$(HF)'),
-    'log_Ca'   : ([-12, -2], r'$\log$(Ca)'),
-    'log_Ti'   : ([-12, -2], r'$\log$(Ti)'),
-    'log_CN'   : ([-12, -2], r'$\log$(CN)'),
-    'log_H2O_18'   : ([-12, -2], r'$\log$(H2O_18)'),
+    
+    # isotologue of water with 18O
+    'log_H2O_181': ([-12, -2], r'$\log\ \mathrm{H_2^{18}O}$'),
+    'log_Na'   : ([-12, -2], r'$\log$\ Na'),
+    'log_HF'   : ([-12, -2], r'$\log$\ HF'),
+    'log_Ca'   : ([-12, -2], r'$\log$\ Ca'),
+    'log_Ti'   : ([-12, -2], r'$\log$\ Ti'),
+    'log_CN'   : ([-12, -2], r'$\log$\ CN'),
+    'log_13CN' : ([-12, -2], r'$\log\ \mathrm{^{13}CN}$'),
     #'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
     #'log_Fe'   : ([-12, -2], r'$\log$(Fe)'),
     #'log_Al'   : ([-12, -2], r'$\log$(Al)'),
@@ -135,6 +138,7 @@ if args.pre_processing:
         line_species_dict = {
             
             'H2O': 'H2O_pokazatel_main_iso',
+            'H2O_181': 'H2O_181',
             '12CO': 'CO_high',
             '13CO': 'CO_36_high',
             'Na': 'Na_allard',
@@ -142,7 +146,7 @@ if args.pre_processing:
             'Ca': 'Ca',
             'Ti': 'Ti',
             'CN': 'CN_main_iso',
-            'H2O_18' : 'H2O_181'
+            '13CN': 'CN_34_high',
             #'Mg': 'Mg',
             #'Fe': 'Fe',
             #'Al': 'Al'
@@ -171,7 +175,7 @@ if args.pre_processing:
     
 
 if args.prior_check:
-    import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt # type: ignore
     print('--> Prior predictive check...')
     
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
