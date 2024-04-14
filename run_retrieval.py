@@ -53,6 +53,7 @@ free_params = {
     'log_Ca'   : ([-12, -2], r'$\log$(Ca)'),
     'log_Ti'   : ([-12, -2], r'$\log$(Ti)'),
     'log_CN'   : ([-12, -2], r'$\log$(CN)'),
+    'log_H2O_18'   : ([-12, -2], r'$\log$(H2O_18)'),
     #'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
     #'log_Fe'   : ([-12, -2], r'$\log$(Fe)'),
     #'log_Al'   : ([-12, -2], r'$\log$(Al)'),
@@ -141,6 +142,7 @@ if args.pre_processing:
             'Ca': 'Ca',
             'Ti': 'Ti',
             'CN': 'CN_main_iso',
+            'H2O_18' : 'H2O_181'
             #'Mg': 'Mg',
             #'Fe': 'Fe',
             #'Al': 'Al'
@@ -268,8 +270,6 @@ if args.evaluation:
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
     ret = Retrieval(parameters, d_spec, pRT, run=run)
-    
-    print(d_spec)
     
     ret.evaluation = True
     ret.PMN_callback(

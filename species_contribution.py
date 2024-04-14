@@ -9,7 +9,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_014'
+run = 'testing_015'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 
 parameters_file = run_dir / 'parameters.json'
@@ -26,6 +26,13 @@ posterior, bestfit_params = ret.PMN_analyzer()
 keys = ret.parameters.param_priors.keys()
 bestfit_params_dict = dict(zip(keys, bestfit_params))
 print(bestfit_params_dict)
+
+print()
+CO_ratio = np.exp(bestfit_params_dict['log_12CO'])/np.exp(bestfit_params_dict['log_13CO'])
+print(CO_ratio)
+print()
+
+
 
 ret.parameters.add_sample(bestfit_params)
 ret.PMN_lnL_func()
