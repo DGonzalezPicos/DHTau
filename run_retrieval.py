@@ -145,7 +145,8 @@ if args.pre_processing:
             'HF': 'HF_main_iso',
             'Ca': 'Ca',
             'Ti': 'Ti',
-            'CN': 'CN_main_iso',
+            # 'CN': 'CN_main_iso',
+            'CN': 'CN_high', # DGP (2024-04-15), new linelist up to 4000 K
             '13CN': 'CN_34_high',
             #'Mg': 'Mg',
             #'Fe': 'Fe',
@@ -156,7 +157,7 @@ if args.pre_processing:
                         mode='lbl',
                         # WARNING: setting `lbl_opacity_sampling = 10` underestimates vsini
                         # and can lead to wrong log_g and PT profiles
-                        lbl_opacity_sampling=5, # set to 10 for speed, 5 for accuracy
+                        lbl_opacity_sampling=5, # set to 5 for speed, 3 for accuracy
                         rayleigh_species=['H2', 'He'],
                         continuum_opacities=['H2-H2', 'H2-He' ], #, 'H-'],
                         log_P_range=(-5,2),
