@@ -1,6 +1,7 @@
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 import numpy as np
 from scipy.ndimage import generic_filter, gaussian_filter1d
@@ -8,7 +9,7 @@ from scipy.ndimage import generic_filter, gaussian_filter1d
 import os
 import copy
 import corner
-
+import pathlib
 import petitRADTRANS.nat_cst as nc
 
 from atm_retrieval.utils import quantiles, weigh_alpha
@@ -55,6 +56,7 @@ def fig_spec_to_fit(d_spec, prefix=None, w_set='', overplot_array=None, fig_name
     fig, ax = fig_order_subplots(d_spec.n_orders, ylabel=ylabel)
 
     for i in range(d_spec.n_orders):
+        ax[i].axhline(1.0, c='k', ls='-', lw=0.5, alpha=0.5)
         for j in range(d_spec.n_dets):
             ax[i].plot(d_spec.wave[i,j], d_spec.flux[i,j], c='k', lw=0.5)
             if overplot_array is not None:
@@ -111,7 +113,7 @@ def fig_PT(PT,
     if ax is None:
         fig, ax = plt.subplots(figsize=(7,7))
         
-    assert hasattr(PT, 'temperature_envelopes'), 'No temperature envelopes found'
+    # assert hasattr(PT, 'temperature_envelopes'), 'No temperature envelopes found'
     
     p = PT.pressure
     if hasattr(PT, 'int_contr_em'):
@@ -147,23 +149,26 @@ def fig_PT(PT,
                 xlim=(0,np.max(PT.int_contr_em)*1.1),
                 )
         
-    # Plot the PT confidence envelopes
-    for i in range(3):
-        ax.fill_betweenx(
-            y=p, x1=PT.temperature_envelopes[i], 
-            x2=PT.temperature_envelopes[-i-1], 
-            color=envelopes_color, ec='none', 
-            alpha=0.3,
-            )
+    if hasattr(PT, 'temperature_envelopes'):
+        # Plot the PT confidence envelopes
+        for i in range(3):
+            ax.fill_betweenx(
+                y=p, x1=PT.temperature_envelopes[i], 
+                x2=PT.temperature_envelopes[-i-1], 
+                color=envelopes_color, ec='none', 
+                alpha=0.3,
+                )
 
-    # Plot the median PT
-    ax.plot(
-        PT.temperature_envelopes[3], p, 
-        c=bestfit_color, lw=2,
-)
+        # Plot the median PT
+        ax.plot(
+            PT.temperature_envelopes[3], p, 
+            c=bestfit_color, lw=2,
+    )
 
-    xlim = (0, PT.temperature_envelopes[-1].max()*1.02) if xlim is None else xlim
-        
+        xlim = (0, PT.temperature_envelopes[-1].max()*1.02) if xlim is None else xlim
+    else:
+        ax.plot(PT.temperature, p, c=bestfit_color, lw=2)
+        xlim = (0, PT.temperature.max()*1.02) if xlim is None else xlim
     ax.set(xlabel='Temperature (K)', ylabel='Pressure (bar)',
             ylim=(p.max(), p.min()), yscale='log',
             xlim=xlim,
@@ -173,9 +178,8 @@ def fig_PT(PT,
     if fig_name is not None:
         fig.savefig(fig_name)
         print(f' - Saved {fig_name}')
-    # fig.savefig(self.prefix+f'plots/{out_fig_prefix}_PT_profile_{out_fig_suffix}.pdf')
-    # print(f' - Saved {self.prefix}plots/{out_fig_prefix}_PT_profile_{out_fig_suffix}.pdf')
-    plt.close(fig)
+        plt.close(fig)
+   
     return fig, ax
 
 
@@ -388,3 +392,81 @@ def fig_bestfit_model(d_spec,
         
     # else:
     return ax_spec, ax_res
+
+
+def fig_prior_check(ret, fig_name='prior_check.pdf'):
+    
+    fig_PT_prior, ax_PT = plt.subplots(1,1,figsize=(7,7),tight_layout=True)
+
+    theta = [0.0, 0.5, 1.0] # lower edge, center, upper edge
+    colors = ['limegreen', 'b', 'r']
+
+    m = []
+    for i, theta_i in enumerate(theta):
+        cube = theta_i * np.ones(ret.parameters.ndim)
+        sample = ret.parameters(cube) # transform the cube to the parameter space
+        ret.parameters.add_sample(sample) # add the sample to the parameters (create dictionary)
+
+        
+        # m_spec = ret.pRT_model(ret.parameters.params) # generate the model spectrum
+        # m_spec.N_knots = ret.parameters.params.get('N_knots', 1)
+        log_L = ret.PMN_lnL_func()
+            
+        # log_L = ret.loglike(m_spec, ret.Cov)
+        sample_dict = dict(zip(ret.parameters.param_keys, sample))
+        print(sample_dict)
+        print(f' - log_L = {log_L:.1e}\n')
+        m.append(ret.loglike.m) # store model
+        
+        
+        fig_PT_prior, ax_PT = fig_PT(ret.pRT_model.PT, ax_PT, fig=fig_PT_prior,
+                       bestfit_color=colors[i],)
+    if isinstance(fig_name, str):
+        fig_name = pathlib.Path(fig_name)
+    outfig_PT = fig_name.parent / (fig_name.stem + '_PT.pdf')
+    fig_PT_prior.savefig(outfig_PT)
+    print(f' - Saved {outfig_PT}')
+    fig, ax = plt.subplots(2,1, figsize=(10,5), sharex=True, 
+                            gridspec_kw={'height_ratios':[3,1],
+                                        'top':0.97, 'bottom':0.1, 
+                                        'hspace':0.05,
+                                        'left':0.07, 
+                                        'right':0.98})
+    ax[0].set(ylabel='Normalized flux')
+    ax[1].set(ylabel='Residuals', xlabel='Wavelength / nm')
+    with PdfPages(fig_name) as pdf:
+        for order in range(ret.d_spec.n_orders):
+
+            ax[0].set(xlim=(ret.d_spec.wave[order].min()-0.1, 
+                            ret.d_spec.wave[order].max()+0.1)
+                        )
+            lw = 1.0
+            ax[1].axhline(0, c='k', lw=0.5)
+            for det in range(ret.d_spec.n_dets):
+                wave = ret.d_spec.wave[order,det]
+                flux = ret.d_spec.flux[order,det]
+                err = np.nan * np.ones_like(flux)
+                mask = ret.d_spec.mask_isfinite[order,det]
+                if np.sum(mask) == 0: # skip if no valid data points
+                    continue
+                err[mask] = ret.Cov[order,det].err
+                
+                ax[0].plot(wave, flux, c='k', lw=lw)
+                ax[0].fill_between(wave, flux-err, flux+err, fc='k', alpha=0.2)
+                ax[1].fill_between(wave, -err, err, fc='k', alpha=0.2)
+                for i, theta_i in enumerate(theta):
+                    m_spec = m[i][order,det]
+                    ax[0].plot(wave, m_spec, c=colors[i], lw=lw, alpha=0.8)
+                    
+                    residuals = flux - m_spec
+                    ax[1].plot(wave, residuals, c=colors[i], lw=lw, alpha=0.8)
+                    
+            pdf.savefig(fig)
+        # clear the axes
+        ax[0].clear()
+        ax[1].clear()
+    plt.close(fig_PT_prior)
+    plt.close(fig)
+    
+    print(f' - Saved {fig_name}')
+    return fig_PT_prior, fig
