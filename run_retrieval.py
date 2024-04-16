@@ -18,11 +18,6 @@ run_dir.mkdir(parents=True, exist_ok=True)
 plots_dir = run_dir / 'plots'
 plots_dir.mkdir(parents=True, exist_ok=True)
     
-'''
-parser.add_argument('--pre_processing', '-p', action='store_true', default=False)
-parser.add_argument('--prior_check', '-c', action='store_true', default=False)
-'''
-    
 # Instantiate the parser
 parser = argparse.ArgumentParser()
 parser.add_argument('--pre_processing', '-p', action='store_true', default=False)
@@ -31,14 +26,13 @@ parser.add_argument('--retrieval', '-r', action='store_true', default=False)
 parser.add_argument('--evaluation', '-e', action='store_true', default=False)
 args = parser.parse_args()
 
-cache = False
 ## Define parameters
 free_params = {
     # GPs
-    # 'log_a': [(-1,0.5), r'$\log\ a$'], 
-    # 'log_l': [(-2,-0.8), r'$\log\ l$'], 
+    'log_a': [(-1,0.5), r'$\log\ a$'], 
+    'log_l': [(-2,-1.2), r'$\log\ l$'], 
 
-    'log_g': [(2.5,5.5), r'$\log\ g$'], 
+    'log_g': [(2.0,5.0), r'$\log\ g$'], 
 
     'vsini' : ([2.0, 16.0], r'$v \sin(i)$ [km/s]'),
     'rv'    : ([-30.0, 30.0], r'RV [km/s]'),
@@ -50,13 +44,13 @@ free_params = {
     'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
     
     # isotologue of water with 18O
-    'log_H2O_181': ([-12, -2], r'$\log\ \mathrm{H_2^{18}O}$'),
+    # 'log_H2O_181': ([-12, -2], r'$\log\ \mathrm{H_2^{18}O}$'),
     'log_Na'   : ([-12, -2], r'$\log$\ Na'),
     'log_HF'   : ([-12, -2], r'$\log$\ HF'),
     'log_Ca'   : ([-12, -2], r'$\log$\ Ca'),
     'log_Ti'   : ([-12, -2], r'$\log$\ Ti'),
     'log_CN'   : ([-12, -2], r'$\log$\ CN'),
-    'log_13CN' : ([-12, -2], r'$\log\ \mathrm{^{13}CN}$'),
+    # 'log_13CN' : ([-12, -2], r'$\log\ \mathrm{^{13}CN}$'),
     #'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
     #'log_Fe'   : ([-12, -2], r'$\log$(Fe)'),
     #'log_Al'   : ([-12, -2], r'$\log$(Al)'),
@@ -71,11 +65,11 @@ free_params = {
     
     # temperature gradients
     'T1': ([3000, 10000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
-    'dlnT_dlnP_1': [(0.0, 0.50), r'$\nabla T_1$'],
-    'dlnT_dlnP_2': [(0.0, 0.40), r'$\nabla T_2$'],
-    'dlnT_dlnP_3': [(0.0, 0.40), r'$\nabla T_3$'],
-    'dlnT_dlnP_4': [(0.0, 0.40), r'$\nabla T_4$'],
-    'dlnT_dlnP_5': [(-0.10, 0.40), r'$\nabla T_5$'],
+    'dlnT_dlnP_1': [(0.02, 0.38), r'$\nabla T_1$'],
+    'dlnT_dlnP_2': [(0.02, 0.38), r'$\nabla T_2$'],
+    'dlnT_dlnP_3': [(0.02, 0.38), r'$\nabla T_3$'],
+    'dlnT_dlnP_4': [(0.02, 0.38), r'$\nabla T_4$'],
+    'dlnT_dlnP_5': [(0.00, 0.38), r'$\nabla T_5$'],
 }
 
 constant_params = {
@@ -85,6 +79,7 @@ constant_params = {
     # 'log_g' : 4.0,
     'epsilon_limb' : 0.5,
     'N_knots': 5,
+    'cov_mode': 'GP', # 'GP' or 'covariance'
     
 }
 
@@ -138,16 +133,15 @@ if args.pre_processing:
         line_species_dict = {
             
             'H2O': 'H2O_pokazatel_main_iso',
-            'H2O_181': 'H2O_181',
+            # 'H2O_181': 'H2O_181',
             '12CO': 'CO_high',
             '13CO': 'CO_36_high',
             'Na': 'Na_allard',
             'HF': 'HF_main_iso',
             'Ca': 'Ca',
             'Ti': 'Ti',
-            # 'CN': 'CN_main_iso',
-            'CN': 'CN_high', # DGP (2024-04-15), new linelist up to 4000 K
-            '13CN': 'CN_34_high',
+            # 'CN': 'CN_high', # DGP (2024-04-15), new linelist up to 4000 K
+            # '13CN': 'CN_34_high',
             #'Mg': 'Mg',
             #'Fe': 'Fe',
             #'Al': 'Al'
@@ -169,10 +163,6 @@ if args.pre_processing:
         pRT.get_atmospheres()
         pRT.pickle_save(run_dir / 'atm.pickle')
         print(f' pRT model saved to {run_dir / "atm.pickle"}')
-        
-        sample = parameters.random_sample
-        parameters.add_sample(sample)
-        m_spec = pRT(parameters.params)
     
 
 if args.prior_check:
@@ -181,67 +171,8 @@ if args.prior_check:
     
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT)
-    
-    
-    fig, ax = plt.subplots(1, 2, figsize=(14, 7), 
-                           gridspec_kw={'width_ratios': [3, 1.], 'wspace':0.05, 'top':0.85})
-    
-
-    colors = ['C0', 'C1', 'C2']
-    # theta = [0.0, 0.5, 1.0] # lower edge, center, upper edge
-    theta = [0.5]
-    for i, theta_i in enumerate(theta):
-        cube = theta_i * np.ones(ret.parameters.ndim)
-        sample = ret.parameters(cube) # transform the cube to the parameter space
-        ret.parameters.add_sample(sample) # add the sample to the parameters (create dictionary)
-
-        
-        m_spec = ret.pRT_model(ret.parameters.params) # generate the model spectrum
-        m_spec.N_knots = ret.parameters.params.get('N_knots', 1)
-            
-        log_L = ret.loglike(m_spec)
-
-        # plot model spectrum and PT profile
-        dict_str = [f'{key_i} = {ret.parameters.params[key_i]}' for key_i in ret.parameters.param_keys]
-        # ax[0].text(0.0, 1.16 - 0.05*i, '   '.join(dict_str), transform=ax[0].transAxes, fontsize=12, color=colors[i])
-
-        m_spec.wave = ret.d_spec.wave
-        
-        for order in range(m_spec.n_orders):
-            for det in range(m_spec.n_dets):
-                mask_ij = ret.d_spec.mask_isfinite[order, det, :]
-                if mask_ij.sum() == 0:
-                    continue
-                
-                # f = ret.loglike.f[:, order, det]
-                # model = f @ m_spec.flux_spline[:, order, det] if m_spec.N_knots > 1 else f*m_spec.flux[order, det]
-                model = ret.loglike.m[order, det, :]
-                label = r'$\log \mathcal{L}$ = ' + f'{log_L:.4e}' if (order+det)==0 else None
-
-                ax[0].plot(m_spec.wave[order, det], model, color=colors[i], alpha=0.8, label=label)
-            
-        ret.pRT_model.PT.plot(ax=ax[1], color=colors[i])
-
-
-    # plot data
-    ret.d_spec.flatten() # flatten the data spectrum (7, 3, 2048) -- > (7*3*2048,)
-    ret.d_spec.plot(ax=ax[0], color='black', alpha=0.4, label='data')
-    ax[0].fill_between(ret.d_spec.wave, ret.d_spec.flux - ret.d_spec.err, ret.d_spec.flux + ret.d_spec.err, color='black', alpha=0.1)
-    
-    
-    ax[0].legend()
-    ax[0].set(xlabel=r'Wavelength [nm]')
-    # set y-axis to the right-hand side
-    ax[1].yaxis.tick_right()
-    ax[1].yaxis.set_label_position("right")
-    # plt.show()
-    fig.savefig(plots_dir / 'prior_predictive_check.pdf', bbox_inches='tight')
-    print(f' Prior predictive check saved to {plots_dir / "prior_predictive_check.pdf"}')
-    plt.close(fig)
-    
-    
-    
+    ret = Retrieval(parameters, d_spec, pRT, run=run)
+    ret.prior_check() # new function to plot the prior predictive check
     
 
 if args.retrieval:
@@ -252,7 +183,7 @@ if args.retrieval:
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
     ret = Retrieval(parameters, d_spec, pRT, run=run)
-    ret.n_live_points = 200
+    ret.n_live_points = 100
     # ret.n_iter_before_update = 1
     # uncomment line below to run the retrieval
     ret.PMN_run()

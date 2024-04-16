@@ -19,7 +19,7 @@ class LogLikelihood:
             self.d_spec.mask_isfinite = self.d_spec.mask_isfinite[None, None, :]
     
         
-    def __call__(self, m_spec):
+    def __call__(self, m_spec, Cov):
         if len(m_spec.flux.shape) == 1:
             print(f'Warning: m_spec.flux.shape = {m_spec.flux.shape}')
             m_spec.flux = m_spec.flux[None, None, :]
@@ -50,43 +50,40 @@ class LogLikelihood:
                 
                 m_flux_ij = m_spec.flux[i,j,mask_ij]
                 d_flux_ij = self.d_spec.flux[i,j,mask_ij]
-                d_err_ij  = self.d_spec.err[i,j,mask_ij]
+                # d_err_ij  = self.d_spec.err[i,j,mask_ij]
+                d_err_ij = Cov[i,j].err # mask already applied in Cov
 
-
-                # print(f'Order {i}, Detector {j}')
-                # print(f' Mean flux m_flux_ij = {m_flux_ij.mean():.2e}')
-                # print(f' Mean flux d_flux_ij = {d_flux_ij.mean():.2e}')
-
-                # res_ij = (d_flux_ij - m_flux_ij)
-                # print(f' Mean residual res_ij = {res_ij.mean():.2e}')
+                # code below deprecated (now including covariance matrix object)
                 # Get the log of the determinant (log prevents over/under-flow)
                 # log(det(Cov)) = sum(log(diag(Cov))) for Cov = diag(diag(Cov))
-                cov_logdet = np.sum(np.log(d_err_ij**2)) # can be negative
-                cov_ij = np.diag(d_err_ij**2) # covariance matrix
-                inv_cov_ij = np.diag(1/d_err_ij**2)
+                # cov_logdet = np.sum(np.log(d_err_ij**2)) # can be negative
+                # cov_ij = np.diag(d_err_ij**2) # covariance matrix
+                # inv_cov_ij = np.diag(1/d_err_ij**2)
                 
+                # DGP (2024-04-16): new covariance matrix
+                if Cov[i,j].is_matrix:
+                    # Retrieve a Cholesky decomposition
+                    Cov[i,j].get_cholesky()
+                Cov[i,j].get_logdet()
+
                 # Set up the log-likelihood for this order/detector
                 # Chi-squared and optimal uncertainty scaling terms still need to be added
                 # equation from Ruffio et al. 2019 (https://arxiv.org/abs/1909.07571)
-                ln_L_ij = -0.5 * (N_ij*np.log(2*np.pi) + cov_logdet)
-                # ln_L_ij = -0.5 * (N_ij*np.log(2*np.pi))
-                # print(f'ln_L_ij (before chi2) = {ln_L_ij:.2f}')
+                ln_L_ij = -0.5 * (N_ij*np.log(2*np.pi) + Cov[i,j].logdet)
+               
                 f_ij = [1.0]
-                # if self.scale_flux and (not (i+j)==0): # this is to retrieve the radius
-                # if self.scale_flux:
-                    # Only scale the flux relative to the first order/detector
-                    # Scale the model flux to minimize the chi-squared error
                 if m_spec.N_knots > 1:
                     
                     m_flux_ij_spline = SplineModel(N_knots=m_spec.N_knots, spline_degree=3)(m_flux_ij)
                    
                     # line below for Gaussian Process
-                    # phi = nnls(np.dot(m_flux_ij_spline, Cov[i,j].solve(m_flux_ij_spline.T)), 
-                    #            np.dot(m_flux_ij_spline, Cov[i,j].solve(d_flux_ij)))[0]
-                    
+                    phi = nnls(np.dot(m_flux_ij_spline, Cov[i,j].solve(m_flux_ij_spline.T)), 
+                               np.dot(m_flux_ij_spline, Cov[i,j].solve(d_flux_ij)))[0]
+                    # assert np.all(np.isfinite(phi)), f'phi = {phi}'
+                    # assert not np.all(phi == 0), f'phi = {phi}'
                     # without GP
-                    phi = nnls(m_flux_ij_spline @ inv_cov_ij @ m_flux_ij_spline.T,
-                                m_flux_ij_spline @ inv_cov_ij @ d_flux_ij)[0]
+                    # phi = nnls(m_flux_ij_spline @ inv_cov_ij @ m_flux_ij_spline.T,
+                    #             m_flux_ij_spline @ inv_cov_ij @ d_flux_ij)[0]
                                
                     m_flux_ij_scaled = phi @ m_flux_ij_spline
                     
@@ -97,21 +94,16 @@ class LogLikelihood:
                 # Calculate the residuals
                 res_ij = (d_flux_ij - m_flux_ij_scaled)
                 
-                
-                
                 # Calculate the chi-squared
-                chi_squared_ij_scaled = res_ij @ inv_cov_ij @ res_ij
+                # chi_squared_ij_scaled = res_ij @ inv_cov_ij @ res_ij
+                chi_squared_ij_scaled = res_ij @ Cov[i,j].solve(res_ij)
                 
                 # optimal uncertainty scaling terms
                 beta_ij = np.sqrt(1/N_ij * chi_squared_ij_scaled)
-
-        
                 # Chi-squared for optimal linear scaling and uncertainty scaling
                 chi_squared_ij = 1/beta_ij**2 * chi_squared_ij_scaled
-                
                 # reduced chi-squared
                 self.chi_squared_reduced = chi_squared_ij / (N_ij - self.n_params)
-                
                 
                 # Add chi-squared and optimal uncertainty scaling terms to log-likelihood
                 ln_L_ij += -(N_ij/2*np.log(beta_ij**2) + 1/2*chi_squared_ij)
@@ -124,7 +116,6 @@ class LogLikelihood:
                 self.m[i,j,mask_ij] = m_flux_ij_scaled # scaled model flux (same shape as d_spec.flux)
                 self.f[:,i,j]    = f_ij
                 self.beta[i,j] = beta_ij
-                
         
         return self.ln_L
     

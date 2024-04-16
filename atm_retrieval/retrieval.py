@@ -12,11 +12,17 @@ rank = comm.Get_rank()
 import numpy as np
 import pathlib
 import pymultinest
+import warnings
+# ignore numpy mean of empty slice
+warnings.filterwarnings("ignore", message="Mean of empty slice")
+warnings.filterwarnings("ignore", message="invalid value encountered in scalar divide")
+
 
 from atm_retrieval.parameters import Parameters
 from atm_retrieval.spectrum import DataSpectrum
 from atm_retrieval.log_likelihood import LogLikelihood
 from atm_retrieval.pRT_model import pRT_model
+from atm_retrieval.covariance import get_Covariance_class
 import atm_retrieval.figures as figs
 
 from atm_retrieval.utils import quantiles
@@ -26,23 +32,55 @@ class Retrieval:
     
     # Pymultinest default parameters
     output_dir = 'retrieval_outputs'
-    n_live_points = 100
-    evidence_tolerance = 0.5
-    n_iter_before_update = n_live_points // 1
+    n_live_points = 100 # >200 for accuracy, 100 for speed
+    evidence_tolerance = 5.0 # 0.5 for accuracy, 5.0 for speed
+    n_iter_before_update = int(n_live_points * 3)
+    sampling_efficiency = 0.10 # 0.05 for accuracy, 0.10 for speed
     
     bestfit_color = 'green'
     
-    def __init__(self, parameters, d_spec, pRT_model, run='testing'):
+    def __init__(self, parameters, d_spec, pRT_model, run='testing', prepare_for_covariance=True):
         self.parameters = parameters
         self.d_spec = d_spec
+        if prepare_for_covariance: # required matrices for covariance calculation
+            self.d_spec.prepare_for_covariance()
         self.pRT_model = pRT_model
-        
-        # Initialize the pRT model
-        # self.pRT_model.setup(self.parameters.params)
         
         # Initialize the log-likelihood
         self.loglike = LogLikelihood(d_spec, self.parameters.n_params, scale_flux=True)
         
+        # Initialize the Covariance matrix for each order-detector
+        self.Cov = np.empty((self.d_spec.n_orders, self.d_spec.n_dets), dtype=object)
+        self.mask_ij = np.ones((self.d_spec.n_orders, self.d_spec.n_dets, self.d_spec.n_pixels), dtype=bool)
+        cov_kwargs = dict(
+                        trunc_dist   = 3, 
+                        scale_GP_amp = True, 
+                        max_separation = 20, 
+        )
+        if 'log_l' in self.parameters.params.keys():
+            cov_kwargs['max_separation'] = cov_kwargs['trunc_dist'] * 10**self.parameters.param_priors['log_l'][1]
+
+        for i in range(self.d_spec.n_orders):
+            for j in range(self.d_spec.n_dets):
+                
+                # Select only the finite pixels
+                mask_ij = np.isfinite(self.d_spec.flux[i,j])
+                self.mask_ij[i,j] = mask_ij # store for later use in `log_likelihood.py`
+                if not mask_ij.any():
+                    print(f'Skipping order {i}, detector {j} with no valid pixels')
+                    continue
+
+                self.Cov[i,j] = get_Covariance_class(
+                    self.d_spec.err[i,j,mask_ij], 
+                    self.parameters.params['cov_mode'], 
+                    separation=self.d_spec.separation[i,j], 
+                    err_eff=self.d_spec.err_eff[i,j], 
+                    **cov_kwargs
+                    )
+        # delete the unnecessary attributes, now stored in self.Cov objects
+        del self.d_spec.separation, 
+        del self.d_spec.err_eff, 
+        del self.d_spec.err
         # ensure the output directory exists
         pathlib.Path(self.output_dir).mkdir(parents=True, exist_ok=True)
         self.run_dir = pathlib.Path(f'{self.output_dir}/{run}')
@@ -54,21 +92,16 @@ class Retrieval:
         
         
     def PMN_lnL_func(self, cube=None, ndim=None, nparams=None):
-        
-        # Transform the cube to the parameter space
-        # sample = self.parameters(cube) # the attribute self.parameters.params is updated
-        # self.parameters.add_sample(sample)
-        
-
-        
+                
         self.m_spec = self.pRT_model(self.parameters.params, get_contr=self.evaluation)
+        if self.d_spec.normalized:
+            # normalize the model spectrum in the same way as the data
+            self.m_spec.normalize_flux_per_order(**self.d_spec.normalize_args)
+        
         # generate spline model for flux decomposition
         self.m_spec.N_knots = self.parameters.params.get('N_knots', 1)
-        # print(f'N_knots = {self.m_spec.N_knots}')
-        # if self.m_spec.N_knots > 1:
-        #     self.m_spec.make_spline(self.m_spec.N_knots)
             
-        lnL = self.loglike(self.m_spec)
+        lnL = self.loglike(self.m_spec, self.Cov)
         if np.isfinite(lnL):
             return lnL
         else:
@@ -77,7 +110,7 @@ class Retrieval:
     def PMN_run(self):
         
         # Pause the process to not overload memory on start-up
-        time.sleep(1)
+        time.sleep(2)
 
         # Run the MultiNest retrieval
         pymultinest.run(
@@ -88,7 +121,7 @@ class Retrieval:
             resume=False, 
             verbose=True, 
             const_efficiency_mode=True, 
-            sampling_efficiency=0.05, 
+            sampling_efficiency=self.sampling_efficiency, 
             n_live_points=self.n_live_points, 
             evidence_tolerance=self.evidence_tolerance, 
             n_iter_before_update=self.n_iter_before_update, 
@@ -263,6 +296,12 @@ class Retrieval:
                     int_contr_em_color='red',
                     fig_name=self.run_dir / f'plots/retrieval_PT_profile_{fig_label}.pdf',
                     )
+            
+    def prior_check(self):
+        
+        # Check the prior space 
+        figs.fig_prior_check(self, fig_name=self.run_dir / 'plots/prior_check.pdf')
+        return self
         
         
         

@@ -22,6 +22,7 @@ class Spectrum:
             [[2422.415,2439.061], [2440.243,2456.145], [2457.275,2472.388]],
             ])
     n_pixels = 2048 # CRIRES+ detectors
+    normalized = False
     
     def __init__(self, wave, flux, err=None):
         
@@ -178,7 +179,8 @@ class Spectrum:
 
         attrs = ['wave', 'flux', 'err', 'mask_isfinite']
         for attr in attrs:
-            setattr(self, attr, getattr(self, attr).flatten())
+            if hasattr(self, attr):
+                setattr(self, attr, getattr(self, attr).flatten())
         shape_out = self.flux.shape
         if debug:
             print(f'Flux array flattened from {shape_in} to {shape_out}')
@@ -290,6 +292,22 @@ class Spectrum:
         # convert [erg/s/cm2/cm] -> [erg/s/cm2/nm]
         flux_bb *= 1e-7
         return flux_bb
+    
+    def normalize_flux_per_order(self, fun='median', tell_threshold=0.0):
+        assert len(np.shape(self.flux))==3, 'Flux array not reshaped into orders and detectors'
+        
+        self.normalize_args = {'fun': fun, 'tell_threshold': tell_threshold}
+        deep_lines = self.transm < tell_threshold if hasattr(self, 'transm') else np.zeros_like(self.flux, dtype=bool)
+        f = np.where(deep_lines, np.nan, self.flux)
+        value = getattr(np, f'nan{fun}')(f, axis=-1)[...,None] # median flux per order
+        self.flux /= value
+        if getattr(self, 'err', None) is not None:
+            self.err /= value
+        if hasattr(self, 'flux_uncorr'):
+            self.flux_uncorr /= value
+            
+        self.normalized = True
+        return self
         
     
 
@@ -593,7 +611,7 @@ class DataSpectrum(Spectrum):
                    ra=None,
                    dec=None,
                    mjd=None,
-                   flux_calibration_factor=5e-13,
+                   flux_calibration_factor=0.0,
                    sigma_clip=3.0,
                    sigma_clip_window=11,
                 #    fig_name=None,
@@ -627,14 +645,6 @@ class DataSpectrum(Spectrum):
         
         print(f' Edge pixels clipped: {n_edge_pixels}')
         self.clip_det_edges(n_edge_pixels)
-
-
-        # TODO: proper flux calibration...
-        # convert to erg/s/cm2/cm (quick manual fix for lack of flux calibration..)
-        self.flux *= flux_calibration_factor
-        self.err *= flux_calibration_factor
-        self.flux_units = 'erg/s/cm2/nm' # update flux units
-        print(f' Flux calibrated to {self.flux_units}')
         
         ## shift to barycentric frame
         if (ra is not None) and (dec is not None) and (mjd is not None):
@@ -657,8 +667,23 @@ class DataSpectrum(Spectrum):
 
         
         self.reshape_orders_dets()
-        self.fill_nans(min_finite_pixels=200)
         print(f' Data reshaped into orders and detectors')
+
+        self.fill_nans(min_finite_pixels=200)
+        # TODO: proper flux calibration...
+        # DGP (2024-04-16): just normalize every order-detector pair since we have flux scaling
+        # convert to erg/s/cm2/cm (quick manual fix for lack of flux calibration..)
+        if flux_calibration_factor > 0.0:
+            self.flux *= flux_calibration_factor
+            self.err *= flux_calibration_factor
+            self.flux_uncorr *= flux_calibration_factor
+
+            self.flux_units = 'erg/s/cm2/nm' # update flux units
+            print(f' Flux calibrated to {self.flux_units}')
+        else:
+            # normalize flux per order ignoring tellurics for calculating median flux
+            print(f' Normalizing flux per order')
+            self.normalize_flux_per_order(fun='median', tell_threshold=0.0)
         
         if sigma_clip is not None:
             self.sigma_clip(sigma=sigma_clip, filter_width=sigma_clip_window, 
@@ -671,13 +696,33 @@ class DataSpectrum(Spectrum):
         # if fig_name is not None:
         #     figs.fig_spec_to_fit(self, fig_name=fig_name)
         if fig_dir is not None:
-            self.flux_uncorr *= flux_calibration_factor
             # figs.fig_telluric_correction(self, fig_dir=f'{fig_dir}/telluric_correction.pdf')
             figs.fig_spec_to_fit(self, 
                                  overplot_array=self.flux_uncorr,
                                  fig_name=f'{fig_dir}/preprocessed_spec.pdf') 
         
         print(f' Preprocessing complete!\n')
+        return self
+    
+    def prepare_for_covariance(self):
+
+        # Make a nested array of ndarray objects with different shapes
+        self.separation = np.empty((self.n_orders, self.n_dets), dtype=object)
+        self.err_eff = np.empty((self.n_orders, self.n_dets), dtype=object)
+        
+        # Loop over the orders and detectors
+        for i in range(self.n_orders):
+            for j in range(self.n_dets):
+                
+                # Mask the arrays, on-the-spot is slower
+                mask_ij = self.mask_isfinite[i,j]
+                # print(f'Order {i}, detector {j}: {mask_ij.sum()} data points')
+                wave_ij = self.wave[i,j,mask_ij]
+
+                # Wavelength separation between all pixels within order/detector
+                self.separation[i,j] = np.abs(wave_ij[None,:] - wave_ij[:,None])
+                self.err_eff[i,j] = np.mean(self.err[i,j,mask_ij])
+
         return self
         
         
