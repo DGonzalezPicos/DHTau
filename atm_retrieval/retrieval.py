@@ -263,7 +263,7 @@ class Retrieval:
                 self.d_spec, 
                 self.m_spec,
                 self.loglike,
-                Cov=None,
+                Cov=getattr(self, 'Cov', None),
                 xlabel=r'Wavelength [nm]',
                 ylabel=r'Flux [erg/s/cm$^2$/cm]',
                 bestfit_color=self.bestfit_color,
