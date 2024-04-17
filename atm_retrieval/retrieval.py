@@ -171,27 +171,11 @@ class Retrieval:
         print(f' - Callback {self.cb_count}')
         
         if self.evaluation:
-
-            # Set-up analyzer object
-            # analyzer = pymultinest.Analyzer(
-            #     n_params=self.parameters.n_params, 
-            #     outputfiles_basename=f'{self.run_dir}/pmn_',
-            #     )
-            # stats = analyzer.get_stats()
-
-            # # Load the equally-weighted posterior distribution
-            # posterior = analyzer.get_equal_weighted_posterior()
-            # posterior = posterior[:,:-1]
-
-            # # Read the parameters of the best-fitting model
-            # bestfit_params = np.array(stats['modes'][0]['maximum a posterior'])
             posterior, bestfit_params = self.PMN_analyzer()
             
         else:
-
             # Read the parameters of the best-fitting model
             bestfit_params = posterior[np.argmax(posterior[:,-2]),:-2]
-
             # Remove the last 2 columns
             posterior = posterior[:,:-2]
 
@@ -223,7 +207,7 @@ class Retrieval:
             self.d_spec, 
             self.m_spec,
             self.loglike,
-            Cov=None,
+            Cov=getattr(self, 'Cov', None),
             xlabel=r'Wavelength [nm]',
             ylabel=r'Flux [erg/s/cm$^2$/cm]',
             ax_spec=ax_spec,
@@ -274,10 +258,7 @@ class Retrieval:
         print(f' - Saved {self.run_dir / f"plots/retrieval_summary_{fig_label}.pdf"}')
             
         if self.evaluation:
-            # fig_name = self.run_dir / f'plots/cornerplot_{self.cb_count}.pdf'
-            # figs.simple_cornerplot(posterior, 
-            #                     labels, 
-            #                     fig_name=fig_name)                
+                       
             figs.fig_bestfit_model(
                 self.d_spec, 
                 self.m_spec,

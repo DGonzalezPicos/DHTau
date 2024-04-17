@@ -312,8 +312,7 @@ def fig_bestfit_model(d_spec,
                 # Show the observed and model spectra
             
                 if Cov is not None:
-                    cov = Cov[i,j].get_dense_cov()
-                    err = np.sqrt(np.diag(cov)) * LogLike.beta[i,j] * flux_factor
+                    err = np.sqrt(np.diag(Cov[i,j].get_dense_cov())) * LogLike.beta[i,j] * flux_factor
                 else:
                     err = d_spec.err[i,j,mask_ij] * LogLike.beta[i,j] * flux_factor
                 
