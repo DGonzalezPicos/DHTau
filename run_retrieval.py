@@ -65,20 +65,22 @@ free_params = {
     
     # temperature gradients
     'T1': ([3000, 10000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
-    'dlnT_dlnP_1': [(0.02, 0.38), r'$\nabla T_1$'],
-    'dlnT_dlnP_2': [(0.02, 0.38), r'$\nabla T_2$'],
-    'dlnT_dlnP_3': [(0.02, 0.38), r'$\nabla T_3$'],
-    'dlnT_dlnP_4': [(0.02, 0.38), r'$\nabla T_4$'],
-    'dlnT_dlnP_5': [(0.00, 0.38), r'$\nabla T_5$'],
+    'dlnT_dlnP_1': [(-0.02, 0.38), r'$\nabla T_1$'],
+    'dlnT_dlnP_2': [(-0.02, 0.38), r'$\nabla T_2$'],
+    'dlnT_dlnP_3': [(-0.02, 0.38), r'$\nabla T_3$'],
+    'dlnT_dlnP_4': [(-0.02, 0.38), r'$\nabla T_4$'],
+    'dlnT_dlnP_5': [(-0.02, 0.38), r'$\nabla T_5$'],
+    'dlnT_dlnP_6': [(-0.02, 0.38), r'$\nabla T_4$'],
+    'dlnT_dlnP_7': [(-0.02, 0.38), r'$\nabla T_5$'],
 }
 
 constant_params = {
-    'log_P_knots': [2, 0, -1, -2, -5], # [log(bar)]
+    'log_P_knots': [2, 1, 0, -1, -2, -3, -5], # [log(bar)]
     'R_p'    : 1.0,
     'distance': 133.3, # [pc] Gaia EDR3 parallactic distance from Bailer-Jones et al. (2021)
     # 'log_g' : 4.0,
     'epsilon_limb' : 0.5,
-    'N_knots': 5,
+    'N_knots': 10, # 2048/N_knots high-pass filter
     'cov_mode': 'GP', # 'GP' or 'covariance'
     
 }
@@ -134,14 +136,15 @@ if args.pre_processing:
             
             'H2O': 'H2O_pokazatel_main_iso',
             # 'H2O_181': 'H2O_181',
+            'H2O_181': 'H2O_181_HotWat78',
             '12CO': 'CO_high',
             '13CO': 'CO_36_high',
             'Na': 'Na_allard',
             'HF': 'HF_main_iso',
             'Ca': 'Ca',
             'Ti': 'Ti',
-            # 'CN': 'CN_high', # DGP (2024-04-15), new linelist up to 4000 K
-            # '13CN': 'CN_34_high',
+            'CN': 'CN_high', # DGP (2024-04-15), new linelist up to 4000 K
+            '13CN': 'CN_34_high',
             #'Mg': 'Mg',
             #'Fe': 'Fe',
             #'Al': 'Al'

@@ -273,8 +273,8 @@ def fig_bestfit_model(d_spec,
     ylim_spec = (np.nanmean(d_spec.flux)-4*np.nanstd(d_spec.flux), 
                  np.nanmean(d_spec.flux)+4*np.nanstd(d_spec.flux)
                 )
-    ylim_res = (1/5*(ylim_spec[0]-np.nanmean(d_spec.flux)), 
-                1/5*(ylim_spec[1]-np.nanmean(d_spec.flux))
+    ylim_res = (1/3*(ylim_spec[0]-np.nanmean(d_spec.flux)), 
+                1/3*(ylim_spec[1]-np.nanmean(d_spec.flux))
                 )
     # apply flux factor
     ylim_spec = (ylim_spec[0]*flux_factor, ylim_spec[1]*flux_factor)
