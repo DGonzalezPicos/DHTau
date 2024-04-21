@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'gp_0'
+run = 'night2_run0'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -103,25 +103,42 @@ if args.pre_processing:
 
     ## Load data
     # file_data = 'data/DHTauA.dat'
-    file_data = 'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC2D.dat' # DGP (2024-03-27)
-    d_spec = DataSpectrum(file_target=file_data, 
-                          slit='w_0.4', 
-                          flux_units='photons',
-                          wave_range=[1990, 2480])
-    d_spec.preprocess(
-        # file_transm='data/DHTauA_molecfit_transm.dat',
-        file_transm=None, # included in `file_target` now
-        tell_threshold=0.50,
-        tell_grow_mask=31,
-        n_edge_pixels=40,
-        sigma_clip=5,
-        sigma_clip_window=51,
-        ra=67.422516,
-        dec=26.54998,
-        mjd=59945.15094260,
-        # fig_name=plots_dir / 'preprocessed_spec.pdf' # deprecated
-        fig_dir = plots_dir
-        )
+    # file_data = 'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC2D.dat' # DGP (2024-03-27)
+    
+    # file_data = 'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat' # DGP (2024-04-21) rename file
+    # file_data = 'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat' # DGP (2024-04-21) add second night
+    file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
+                 f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
+    
+    d_spec_list = []
+    for i, file in enumerate(file_data):
+        d_spec = DataSpectrum(file_target=file, 
+                            slit='w_0.4', 
+                            flux_units='photons',
+                            wave_range=[1990, 2480],
+                            night=(i+1) if len(file_data) > 1 else None,)
+        
+        
+        d_spec.preprocess(
+            # file_transm='data/DHTauA_molecfit_transm.dat',
+            file_transm=None, # included in `file_target` now
+            tell_threshold=0.50,
+            tell_grow_mask=31,
+            n_edge_pixels=40,
+            sigma_clip=4,
+            sigma_clip_window=11,
+            ra=67.422516,
+            dec=26.54998,
+            mjd=59945.15094260,
+            # fig_name=plots_dir / 'preprocessed_spec.pdf' # deprecated
+            fig_dir = plots_dir
+            )
+        d_spec_list.append(d_spec)
+        
+    # Add data from two different nights (new shape of wave, flux, err = (n_orders, n_dets, n_wave) = (7, 3*2, 2048)
+    d_spec = d_spec_list[0].add_dataset(d_spec_list[1]) if len(d_spec_list) > 1 else d_spec_list[0]
+        
+        
     d_spec.pickle_save(run_dir / 'd_spec.pickle')
     print(f' Preprocessed spectrum saved to {run_dir / "d_spec.pickle"}')
     # output shape of wave, flux, err = (n_orders, n_dets, n_wave) = (7, 3, 2048)
