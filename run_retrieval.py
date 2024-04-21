@@ -99,16 +99,16 @@ else:
     
 if args.pre_processing:
     print('--> Pre-processing...')
-    # Run the pre-processing
-
-    ## Load data
-    # file_data = 'data/DHTauA.dat'
-    # file_data = 'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC2D.dat' # DGP (2024-03-27)
     
-    # file_data = 'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat' # DGP (2024-04-21) rename file
-    # file_data = 'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat' # DGP (2024-04-21) add second night
+    ## Load data
+    # DGP (2024-04-21) run retrieval on two nights
     file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
                  f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
+    
+    # run retrieval on one night (choose night 1 or 2)
+    # file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat']
+    
+    assert isinstance(file_data, list), 'file_data must be a list of strings (even if it has only one element)'
     
     d_spec_list = []
     for i, file in enumerate(file_data):
