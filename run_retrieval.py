@@ -65,20 +65,22 @@ free_params = {
     
     # temperature gradients
     'T1': ([3000, 10000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
-    'dlnT_dlnP_1': [(0.02, 0.38), r'$\nabla T_1$'],
-    'dlnT_dlnP_2': [(0.02, 0.38), r'$\nabla T_2$'],
-    'dlnT_dlnP_3': [(0.02, 0.38), r'$\nabla T_3$'],
-    'dlnT_dlnP_4': [(0.02, 0.38), r'$\nabla T_4$'],
-    'dlnT_dlnP_5': [(0.00, 0.38), r'$\nabla T_5$'],
+    'dlnT_dlnP_1': [(-0.02, 0.38), r'$\nabla T_1$'],
+    'dlnT_dlnP_2': [(-0.02, 0.38), r'$\nabla T_2$'],
+    'dlnT_dlnP_3': [(-0.02, 0.38), r'$\nabla T_3$'],
+    'dlnT_dlnP_4': [(-0.02, 0.38), r'$\nabla T_4$'],
+    'dlnT_dlnP_5': [(-0.02, 0.38), r'$\nabla T_5$'],
+    'dlnT_dlnP_6': [(-0.02, 0.38), r'$\nabla T_6$'],
+    'dlnT_dlnP_7': [(-0.02, 0.38), r'$\nabla T_7$'],
 }
 
 constant_params = {
-    'log_P_knots': [2, 0, -1, -2, -5], # [log(bar)]
+    'log_P_knots': [2, 1, 0, -1, -2, -3, -5], # [log(bar)]
     'R_p'    : 1.0,
     'distance': 133.3, # [pc] Gaia EDR3 parallactic distance from Bailer-Jones et al. (2021)
     # 'log_g' : 4.0,
     'epsilon_limb' : 0.5,
-    'N_knots': 5,
+    'N_knots': 10, # 2048/N_knots high-pass filter
     'cov_mode': 'GP', # 'GP' or 'covariance'
     
 }
@@ -97,29 +99,46 @@ else:
     
 if args.pre_processing:
     print('--> Pre-processing...')
-    # Run the pre-processing
-
+    
     ## Load data
-    # file_data = 'data/DHTauA.dat'
-    file_data = 'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC2D.dat' # DGP (2024-03-27)
-    d_spec = DataSpectrum(file_target=file_data, 
-                          slit='w_0.4', 
-                          flux_units='photons',
-                          wave_range=[1990, 2480])
-    d_spec.preprocess(
-        # file_transm='data/DHTauA_molecfit_transm.dat',
-        file_transm=None, # included in `file_target` now
-        tell_threshold=0.50,
-        tell_grow_mask=31,
-        n_edge_pixels=40,
-        sigma_clip=5,
-        sigma_clip_window=51,
-        ra=67.422516,
-        dec=26.54998,
-        mjd=59945.15094260,
-        # fig_name=plots_dir / 'preprocessed_spec.pdf' # deprecated
-        fig_dir = plots_dir
-        )
+    # DGP (2024-04-21) run retrieval on two nights
+    #file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
+     #            f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
+    
+    # run retrieval on one night (choose night 1 or 2)
+    file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
+    
+    assert isinstance(file_data, list), 'file_data must be a list of strings (even if it has only one element)'
+    
+    d_spec_list = []
+    for i, file in enumerate(file_data):
+        d_spec = DataSpectrum(file_target=file, 
+                            slit='w_0.4', 
+                            flux_units='photons',
+                            wave_range=[1990, 2480],
+                            night=(i+1) if len(file_data) > 1 else None,)
+        
+        
+        d_spec.preprocess(
+            # file_transm='data/DHTauA_molecfit_transm.dat',
+            file_transm=None, # included in `file_target` now
+            tell_threshold=0.50,
+            tell_grow_mask=31,
+            n_edge_pixels=40,
+            sigma_clip=4,
+            sigma_clip_window=11,
+            ra=67.422516,
+            dec=26.54998,
+            mjd=59945.15094260,
+            # fig_name=plots_dir / 'preprocessed_spec.pdf' # deprecated
+            fig_dir = plots_dir
+            )
+        d_spec_list.append(d_spec)
+        
+    # Add data from two different nights (new shape of wave, flux, err = (n_orders, n_dets, n_wave) = (7, 3*2, 2048)
+    d_spec = d_spec_list[0].add_dataset(d_spec_list[1]) if len(d_spec_list) > 1 else d_spec_list[0]
+        
+        
     d_spec.pickle_save(run_dir / 'd_spec.pickle')
     print(f' Preprocessed spectrum saved to {run_dir / "d_spec.pickle"}')
     # output shape of wave, flux, err = (n_orders, n_dets, n_wave) = (7, 3, 2048)
@@ -134,14 +153,15 @@ if args.pre_processing:
             
             'H2O': 'H2O_pokazatel_main_iso',
             # 'H2O_181': 'H2O_181',
+            'H2O_181': 'H2O_181_HotWat78',
             '12CO': 'CO_high',
             '13CO': 'CO_36_high',
             'Na': 'Na_allard',
             'HF': 'HF_main_iso',
             'Ca': 'Ca',
             'Ti': 'Ti',
-            # 'CN': 'CN_high', # DGP (2024-04-15), new linelist up to 4000 K
-            # '13CN': 'CN_34_high',
+            'CN': 'CN_high', # DGP (2024-04-15), new linelist up to 4000 K
+            '13CN': 'CN_34_high',
             #'Mg': 'Mg',
             #'Fe': 'Fe',
             #'Al': 'Al'

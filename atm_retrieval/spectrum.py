@@ -326,6 +326,7 @@ class DataSpectrum(Spectrum):
                  wave_range=(1900,2500), 
                  flux_units='photons',
                  Teff_standard=None,
+                 night=None,
                  ):
         
         # Save additional information to calculate barycentric correction
@@ -376,7 +377,10 @@ class DataSpectrum(Spectrum):
         self.wave_range = wave_range
         self.reshaped = False # default
         
-    
+        self.night = night  
+        self.night_label=''
+        if self.night is not None:
+            self.night_label = f'_night{self.night}'
         
     def bary_corr(self, replace_wave=True, return_v_bary=False):
 
@@ -603,6 +607,25 @@ class DataSpectrum(Spectrum):
         self.update_isfinite_mask()
         return self
     
+    def add_dataset(self, d_spec):
+        '''Add another DataSpectrum instance to the current one'''
+        assert hasattr(d_spec, 'flux'), 'No flux array found in the input DataSpectrum instance'
+        assert hasattr(d_spec, 'wave'), 'No wavelength array found in the input DataSpectrum instance'
+        assert hasattr(d_spec, 'err'), 'No error array found in the input DataSpectrum instance'
+        
+        assert np.shape(self.flux) == np.shape(d_spec.flux), 'Flux arrays have different shapes'
+        assert np.shape(self.wave) == np.shape(d_spec.wave), 'Wavelength arrays have different shapes'
+        
+        print(f'[add_dataset] Adding flux arrays of shape {np.shape(d_spec.flux)}')
+        
+        attrs = ['flux', 'wave', 'err', 'mask_isfinite']
+        for attr in attrs:
+            setattr(self, attr, np.concatenate((getattr(self, attr), getattr(d_spec, attr)), axis=1))
+            
+        self.n_orders, self.n_dets, self.n_pixels = self.flux.shape
+        print(f'[add_dataset] New flux array shape: {np.shape(self.flux)}')
+        return self
+    
     def preprocess(self,
                    file_transm=None,
                    tell_threshold=0.7,
@@ -642,6 +665,12 @@ class DataSpectrum(Spectrum):
             mask_fraction = (tell_mask.sum()-nans.sum())/tell_mask.size
             print(f' Masking deep tellurics ({100*mask_fraction:.1f} % of pixels)')
         self.flux[tell_mask] = np.nan
+        
+        # mask regions flagged by molecfit
+        if hasattr(self, 'nans'):
+            self.flux[self.nans.astype(bool)] = np.nan
+            nan_frac = (np.isnan(self.flux).sum()-self.nans.sum())/self.nans.size
+            print(f' Masking regions flagged by Molecfit ({100*nan_frac:.1f} % of pixels)')
         
         print(f' Edge pixels clipped: {n_edge_pixels}')
         self.clip_det_edges(n_edge_pixels)
@@ -688,7 +717,7 @@ class DataSpectrum(Spectrum):
         if sigma_clip is not None:
             self.sigma_clip(sigma=sigma_clip, filter_width=sigma_clip_window, 
                             replace_flux=True, 
-                            fig_name=f'{fig_dir}/sigma_clipped_spec.pdf',
+                            fig_name=f'{fig_dir}/sigma_clipped_spec{self.night_label}.pdf',
                             debug=True)
         # plot sigma clipped spectrum
         
@@ -699,7 +728,7 @@ class DataSpectrum(Spectrum):
             # figs.fig_telluric_correction(self, fig_dir=f'{fig_dir}/telluric_correction.pdf')
             figs.fig_spec_to_fit(self, 
                                  overplot_array=self.flux_uncorr,
-                                 fig_name=f'{fig_dir}/preprocessed_spec.pdf') 
+                                 fig_name=f'{fig_dir}/preprocessed_spec{self.night_label}.pdf') 
         
         print(f' Preprocessing complete!\n')
         return self
