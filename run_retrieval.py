@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'night2_run0'
+run = 'night2_veiling_1'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -33,6 +33,7 @@ free_params = {
     'log_l': [(-2,-1.2), r'$\log\ l$'], 
 
     'log_g': [(2.0,5.0), r'$\log\ g$'], 
+    'r_k'  : [(0.0, 3.0), r'$r_k$'], # veiling factor (0 for no veiling, can be > 1)
 
     'vsini' : ([2.0, 16.0], r'$v \sin(i)$ [km/s]'),
     'rv'    : ([-30.0, 30.0], r'RV [km/s]'),
@@ -44,7 +45,7 @@ free_params = {
     'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
     
     # isotologue of water with 18O
-    # 'log_H2O_181': ([-12, -2], r'$\log\ \mathrm{H_2^{18}O}$'),
+    'log_H2O_181': ([-12, -2], r'$\log\ \mathrm{H_2^{18}O}$'),
     'log_Na'   : ([-12, -2], r'$\log$\ Na'),
     'log_HF'   : ([-12, -2], r'$\log$\ HF'),
     'log_Ca'   : ([-12, -2], r'$\log$\ Ca'),
@@ -161,7 +162,7 @@ if args.pre_processing:
             'Ca': 'Ca',
             'Ti': 'Ti',
             'CN': 'CN_high', # DGP (2024-04-15), new linelist up to 4000 K
-            '13CN': 'CN_34_high',
+            # '13CN': 'CN_34_high',
             #'Mg': 'Mg',
             #'Fe': 'Fe',
             #'Al': 'Al'

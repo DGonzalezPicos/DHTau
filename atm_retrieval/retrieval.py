@@ -46,6 +46,10 @@ class Retrieval:
             self.d_spec.prepare_for_covariance()
         self.pRT_model = pRT_model
         
+        # New (2024-04-23): veiling for scaling line depths of the model
+        # must pass the veiling scaling `r_k` (r_k = 0 for no veiling)
+        self.apply_veiling = True if 'r_k' in list(self.parameters.param_keys) else False
+
         # Initialize the log-likelihood
         self.loglike = LogLikelihood(d_spec, self.parameters.n_params, scale_flux=True)
         
@@ -97,6 +101,11 @@ class Retrieval:
         if self.d_spec.normalized:
             # normalize the model spectrum in the same way as the data
             self.m_spec.normalize_flux_per_order(**self.d_spec.normalize_args)
+            
+        if self.apply_veiling:
+            # print(f' - Applying veiling with r_k = {self.parameters.params["r_k"]}')
+            self.m_spec.veiling(self.parameters.params['r_k'], replace_flux=True)
+            
         
         # generate spline model for flux decomposition
         self.m_spec.N_knots = self.parameters.params.get('N_knots', 1)
