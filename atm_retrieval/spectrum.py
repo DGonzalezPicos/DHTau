@@ -793,6 +793,15 @@ class ModelSpectrum(Spectrum):
         self.flux_spline = SplineModel(N_knots, spline_degree)(self.flux) # shape (N_knots, *self.flux.shape)
         return self
     
+    def veiling(self, r_k, replace_flux=True):
+        ''' Apply veiling to the model spectrum '''
+        flux_v = (self.flux + r_k) / (1 + r_k)
+        # flux_v = self.flux * r_k
+        if replace_flux:
+            self.flux = flux_v
+            return self
+        return flux_v
+    
     
 if __name__ == '__main__':
     
