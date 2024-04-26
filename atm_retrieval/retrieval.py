@@ -56,13 +56,13 @@ class Retrieval:
         # Initialize the Covariance matrix for each order-detector
         self.Cov = np.empty((self.d_spec.n_orders, self.d_spec.n_dets), dtype=object)
         self.mask_ij = np.ones((self.d_spec.n_orders, self.d_spec.n_dets, self.d_spec.n_pixels), dtype=bool)
-        cov_kwargs = dict(
+        self.cov_kwargs = dict(
                         trunc_dist   = 3, 
                         scale_GP_amp = True, 
                         max_separation = 20, 
         )
         if 'log_l' in self.parameters.params.keys():
-            cov_kwargs['max_separation'] = cov_kwargs['trunc_dist'] * 10**self.parameters.param_priors['log_l'][1]
+            self.cov_kwargs['max_separation'] = self.cov_kwargs['trunc_dist'] * 10**self.parameters.param_priors['log_l'][1]
 
         for i in range(self.d_spec.n_orders):
             for j in range(self.d_spec.n_dets):
@@ -76,10 +76,10 @@ class Retrieval:
 
                 self.Cov[i,j] = get_Covariance_class(
                     self.d_spec.err[i,j,mask_ij], 
-                    self.parameters.params['cov_mode'], 
+                    self.parameters.params.get('cov_mode', 'GP'), # default is 'GP' 
                     separation=self.d_spec.separation[i,j], 
                     err_eff=self.d_spec.err_eff[i,j], 
-                    **cov_kwargs
+                    **self.cov_kwargs
                     )
         # delete the unnecessary attributes, now stored in self.Cov objects
         del self.d_spec.separation, 
@@ -93,6 +93,19 @@ class Retrieval:
         # default
         self.evaluation = False
         self.cb_count = 0
+        
+    def update_Cov(self, params):
+        """ Generate GP kernel
+        
+        assert 'log_a' in self.parameters.params.keys(), 'log_a must be a free parameter'
+        assert 'log_l' in self.parameters.params.keys(), 'log_l must be a free parameter'
+        """
+        
+        for i in range(self.d_spec.n_orders):
+            for j in range(self.d_spec.n_dets):
+                if self.Cov[i,j] is not None:
+                    self.Cov[i,j](params, order=i, det=j, **self.cov_kwargs)
+        return self
         
         
     def PMN_lnL_func(self, cube=None, ndim=None, nparams=None):
@@ -109,6 +122,9 @@ class Retrieval:
         
         # generate spline model for flux decomposition
         self.m_spec.N_knots = self.parameters.params.get('N_knots', 1)
+        
+        if 'log_a' in self.parameters.params.keys():
+            self.update_Cov(self.parameters.params) # DGP (2024-04-26): create the GP kernel...
             
         lnL = self.loglike(self.m_spec, self.Cov)
         if np.isfinite(lnL):
