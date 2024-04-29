@@ -157,44 +157,13 @@ class GaussianProcesses(Covariance):
 
         # Reset the covariance matrix
         self.cov_reset()
-
-        if params[f'beta'][order,det] != 1:
-            self.add_data_err_scaling(
-                params[f'beta'][order,det]
-                )
-
-        if params[f'a'][order,det] != 0:
-            self.add_RBF_kernel(
-                a=params[f'a'][order,det], 
-                l=params[f'l'][order,det], 
+        self.add_RBF_kernel(
+                a=10.0**params[f'log_a'], 
+                l=10.0**params[f'log_l'], 
                 array=self.err_eff, 
                 **kwargs
                 )
-            
-        if params[f'a_f'][order,det] != 0:
-            self.add_RBF_kernel(
-                a=params[f'a_f'][order,det], 
-                l=params[f'l_f'][order,det], 
-                array=self.flux_eff, 
-                **kwargs
-                )
-
-        '''
-        RBF_kwargs = ['a', 'l']
-        if all([kwargs.get(key) is not None for key in RBF_kwargs]):
-            # Add a radial-basis function kernel
-            self.add_RBF_kernel(array=self.err_eff, **kwargs)
-
-        RBF_f_kwargs = ['a_f', 'l_f']
-        if all([kwargs.get(key) is not None for key in RBF_f_kwargs]):
-            if kwargs.get('a_f') == 0:
-                return
-            
-            kwargs['a'] = kwargs.get('a_f')
-            kwargs['l'] = kwargs.get('l_f')
-            # Add a radial-basis function kernel
-            self.add_RBF_kernel(array=self.flux_eff, **kwargs)
-        '''
+        return self
 
     def cov_reset(self):
 
@@ -203,6 +172,7 @@ class GaussianProcesses(Covariance):
         self.cov[0] = self.err**2
 
         self.is_matrix = True
+        return self
 
     def add_RBF_kernel(self, a, l, array, trunc_dist=5, scale_GP_amp=False, **kwargs):
         '''
@@ -233,12 +203,6 @@ class GaussianProcesses(Covariance):
         GP_amp = a**2
         if scale_GP_amp:
             # Use amplitude as fraction of flux uncertainty
-            '''
-            if isinstance(self.err_eff, float):
-                GP_amp *= self.err_eff**2
-            else:
-                GP_amp *= self.err_eff[w_ij]**2
-            '''
             if isinstance(array, float):
                 GP_amp *= array**2
             else:
@@ -246,6 +210,7 @@ class GaussianProcesses(Covariance):
 
         # Gaussian radial-basis function kernel
         self.cov[w_ij] += GP_amp * np.exp(-(self.separation[w_ij])**2/(2*l**2))
+        return self
 
     def get_cholesky(self):
         '''
@@ -266,6 +231,7 @@ class GaussianProcesses(Covariance):
         '''
 
         self.logdet = 2*np.sum(np.log(self.cov_cholesky[0]))
+        return self
 
     def solve(self, b):
         '''

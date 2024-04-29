@@ -33,7 +33,7 @@ free_params = {
     'log_l': [(-2,-1.2), r'$\log\ l$'], 
 
     'log_g': [(2.0,5.0), r'$\log\ g$'], 
-    'r_k'  : [(0.0, 3.0), r'$r_k$'], # veiling factor (0 for no veiling, can be > 1)
+    # 'r_k'  : [(0.0, 3.0), r'$r_k$'], # veiling factor (0 for no veiling, can be > 1)
 
     'vsini' : ([2.0, 16.0], r'$v \sin(i)$ [km/s]'),
     'rv'    : ([-30.0, 30.0], r'RV [km/s]'),
@@ -66,13 +66,13 @@ free_params = {
     
     # temperature gradients
     'T1': ([3000, 10000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
-    'dlnT_dlnP_1': [(-0.02, 0.38), r'$\nabla T_1$'],
-    'dlnT_dlnP_2': [(-0.02, 0.38), r'$\nabla T_2$'],
-    'dlnT_dlnP_3': [(-0.02, 0.38), r'$\nabla T_3$'],
-    'dlnT_dlnP_4': [(-0.02, 0.38), r'$\nabla T_4$'],
-    'dlnT_dlnP_5': [(-0.02, 0.38), r'$\nabla T_5$'],
-    'dlnT_dlnP_6': [(-0.02, 0.38), r'$\nabla T_6$'],
-    'dlnT_dlnP_7': [(-0.02, 0.38), r'$\nabla T_7$'],
+    'dlnT_dlnP_1': [(0.04,  0.40), r'$\nabla T_1$'],
+    'dlnT_dlnP_2': [(0.04,  0.40), r'$\nabla T_2$'],
+    'dlnT_dlnP_3': [(-0.04, 0.40), r'$\nabla T_3$'],
+    'dlnT_dlnP_4': [(-0.10, 0.40), r'$\nabla T_4$'],
+    'dlnT_dlnP_5': [(-0.10, 0.40), r'$\nabla T_5$'],
+    'dlnT_dlnP_6': [(-0.10, 0.40), r'$\nabla T_4$'],
+    'dlnT_dlnP_7': [(-0.10, 0.40), r'$\nabla T_5$'],
 }
 
 constant_params = {
@@ -103,8 +103,8 @@ if args.pre_processing:
     
     ## Load data
     # DGP (2024-04-21) run retrieval on two nights
-    #file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
-     #            f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
+    file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
+                 f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
     
     # run retrieval on one night (choose night 1 or 2)
     file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
@@ -227,6 +227,8 @@ if args.evaluation:
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
     pRT = pickle_load(run_dir / 'atm.pickle')
     ret = Retrieval(parameters, d_spec, pRT, run=run)
+    
+    # print(d_spec)
     
     ret.evaluation = True
     ret.PMN_callback(
