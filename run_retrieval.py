@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'night2_fix_GP'
+run = 'night2_veiling'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -36,7 +36,9 @@ free_params = {
     # 'r_k'  : [(0.0, 3.0), r'$r_k$'], # veiling factor (0 for no veiling, can be > 1)
 
     'vsini' : ([2.0, 16.0], r'$v \sin(i)$ [km/s]'),
+    # 'vsini' : ([5.2, 5.4], r'$v \sin(i)$ [km/s]'),
     'rv'    : ([-30.0, 30.0], r'RV [km/s]'),
+    # 'rv' : ([16.0, 16.1], r'RV [km/s]'),
     
     # chemistry
     'log_12CO': [(-12,-2), r'$\log\ \mathrm{^{12}CO}$'], 
@@ -81,7 +83,8 @@ constant_params = {
     'distance': 133.3, # [pc] Gaia EDR3 parallactic distance from Bailer-Jones et al. (2021)
     # 'log_g' : 4.0,
     'epsilon_limb' : 0.5,
-    'N_knots': 10, # 2048/N_knots high-pass filter
+    'N_knots': 1, # 2048/N_knots high-pass filter
+    'N_veiling': 5, # number of veiling components
     'cov_mode': 'GP', # 'GP' or 'covariance'
     
 }
