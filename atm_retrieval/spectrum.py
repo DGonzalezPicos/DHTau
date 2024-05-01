@@ -810,7 +810,10 @@ class ModelSpectrum(Spectrum):
         
         # simple flat model with shape (N_veiling, 2048)
         # the model is the same for all order-dets but the amplitudes are different (to be fitted in `log_likelihood.py`)
-        self.M_veiling = SplineModel(self.N_veiling, spline_degree=3)(np.ones((self.flux.shape[-1])))
+        if N > 1:
+            self.M_veiling = SplineModel(self.N_veiling, spline_degree=3)(np.ones((self.flux.shape[-1])))
+        else:
+            self.M_veiling = np.ones((self.flux.shape[-1]))[None,:] # shape (1, 2048)
         return self
         
     
