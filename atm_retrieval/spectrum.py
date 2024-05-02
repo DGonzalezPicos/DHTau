@@ -9,6 +9,7 @@ from petitRADTRANS.retrieval import rebin_give_width as rgw
 import pickle
 
 import atm_retrieval.figures as figs
+from atm_retrieval.spline_model import SplineModel
 
 class Spectrum:
     
@@ -801,6 +802,20 @@ class ModelSpectrum(Spectrum):
             self.flux = flux_v
             return self
         return flux_v
+    
+    def add_veiling(self, N=1):
+        ''' Generate new attribute to store veiling model '''
+        assert N > 0, f'Number of knots must be greater than 0 ({N} not allowed)'
+        self.N_veiling = int(N)
+        
+        # simple flat model with shape (N_veiling, 2048)
+        # the model is the same for all order-dets but the amplitudes are different (to be fitted in `log_likelihood.py`)
+        if self.N_veiling > 1:
+            self.M_veiling = SplineModel(self.N_veiling, spline_degree=3)(np.ones((self.flux.shape[-1])))
+        else:
+            self.M_veiling = np.ones((self.flux.shape[-1]))[None,:] # shape (1, 2048)
+        return self
+        
     
     
 if __name__ == '__main__':

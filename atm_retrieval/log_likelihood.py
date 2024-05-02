@@ -27,13 +27,12 @@ class LogLikelihood:
         # Calculate the log-likelihood
         self.ln_L = 0.0
         # Array to store the linear flux-scaling terms
-        N_knots = m_spec.N_knots # at least 1
-        self.f    = np.ones((N_knots, self.n_orders, self.n_dets))
+        N_knots = m_spec.N_knots  # at least 1
+        self.f    = np.ones((N_knots+m_spec.N_veiling, self.n_orders, self.n_dets))
         # Array to store the uncertainty-scaling terms
         self.beta = np.ones((self.n_orders, self.n_dets))
-        self.m = np.nan * np.ones_like(self.d_spec.flux)
+        self.m = np.nan * np.ones_like(self.d_spec.flux) # store the full model
 
-        # n_orders, n_dets = self.d_spec.flux.shape[:2]
         # Loop over all orders and detectors
         for i in range(self.n_orders):
             for j in range(self.n_dets):
@@ -49,6 +48,8 @@ class LogLikelihood:
                     continue
                 
                 m_flux_ij = m_spec.flux[i,j,mask_ij]
+                M_ij = m_flux_ij[np.newaxis, :] # shape (1, n_pixels) initialize design matrix
+                
                 d_flux_ij = self.d_spec.flux[i,j,mask_ij]
                 # d_err_ij  = self.d_spec.err[i,j,mask_ij]
                 d_err_ij = Cov[i,j].err # mask already applied in Cov
@@ -72,24 +73,47 @@ class LogLikelihood:
                 ln_L_ij = -0.5 * (N_ij*np.log(2*np.pi) + Cov[i,j].logdet)
                
                 f_ij = [1.0]
+        
                 if m_spec.N_knots > 1:
                     
-                    m_flux_ij_spline = SplineModel(N_knots=m_spec.N_knots, spline_degree=3)(m_flux_ij)
-                   
+                    # m_flux_ij_spline = SplineModel(N_knots=m_spec.N_knots, spline_degree=3)(m_flux_ij)
+                    
+                    # replace single-component matrix with multi-component matrix
+                    M_ij = SplineModel(N_knots=m_spec.N_knots, spline_degree=3)(m_flux_ij)
                     # line below for Gaussian Process
-                    phi = nnls(np.dot(m_flux_ij_spline, Cov[i,j].solve(m_flux_ij_spline.T)), 
-                               np.dot(m_flux_ij_spline, Cov[i,j].solve(d_flux_ij)))[0]
+                    # f_ij = nnls(np.dot(m_flux_ij_spline, Cov[i,j].solve(m_flux_ij_spline.T)), 
+                    #            np.dot(m_flux_ij_spline, Cov[i,j].solve(d_flux_ij)))[0]
                     # assert np.all(np.isfinite(phi)), f'phi = {phi}'
                     # assert not np.all(phi == 0), f'phi = {phi}'
                     # without GP
                     # phi = nnls(m_flux_ij_spline @ inv_cov_ij @ m_flux_ij_spline.T,
                     #             m_flux_ij_spline @ inv_cov_ij @ d_flux_ij)[0]
                                
-                    m_flux_ij_scaled = phi @ m_flux_ij_spline
+                    # m_flux_ij_scaled = f_ij @ m_flux_ij_spline
                     
-                else:
-                    m_flux_ij_scaled, f_ij = self.get_flux_scaling(d_flux_ij, m_flux_ij, inv_cov_ij)
-                    f_ij = np.atleast_1d(f_ij)
+                if m_spec.N_veiling > 0:
+                    # build linear model with veiling components
+                    
+                    M_ij = np.concatenate([M_ij, m_spec.M_veiling[:,mask_ij]], axis=0) # add veiling components
+                    # print(f'M.shape = {M_ij.shape}')
+                    
+                # solve for the linear scaling factors
+                try:
+                    f_ij = nnls(np.dot(M_ij, Cov[i,j].solve(M_ij.T)),
+                                np.dot(M_ij, Cov[i,j].solve(d_flux_ij)))[0]
+                except RuntimeError:
+                    # print(f' Warning: nnls did not converge for order {i}, detector {j}... fitting without model spectrum')
+                    f_ij = np.zeros((M_ij.shape[0]))
+                    f_ij[1:] = nnls(np.dot(M_ij[1:,], Cov[i,j].solve(M_ij[1:].T)),
+                                np.dot(M_ij[1:,], Cov[i,j].solve(d_flux_ij)))[0]
+                
+                # convert from matrix to array again with the fitted linear amplitudes
+                m_flux_ij_scaled = f_ij @ M_ij
+                    
+                    
+                # else:
+                #     m_flux_ij_scaled, f_ij = self.get_flux_scaling(d_flux_ij, m_flux_ij, inv_cov_ij)
+                #     f_ij = np.atleast_1d(f_ij)
                     
                 # Calculate the residuals
                 res_ij = (d_flux_ij - m_flux_ij_scaled)

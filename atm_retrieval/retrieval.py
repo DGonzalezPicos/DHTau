@@ -49,6 +49,7 @@ class Retrieval:
         # New (2024-04-23): veiling for scaling line depths of the model
         # must pass the veiling scaling `r_k` (r_k = 0 for no veiling)
         self.apply_veiling = True if 'r_k' in list(self.parameters.param_keys) else False
+        self.add_veiling = True if 'N_veiling' in list(self.parameters.param_keys) else False # DGP (2024-05-01
 
         # Initialize the log-likelihood
         self.loglike = LogLikelihood(d_spec, self.parameters.n_params, scale_flux=True)
@@ -119,9 +120,12 @@ class Retrieval:
             # print(f' - Applying veiling with r_k = {self.parameters.params["r_k"]}')
             self.m_spec.veiling(self.parameters.params['r_k'], replace_flux=True)
             
-        
+            
         # generate spline model for flux decomposition
-        self.m_spec.N_knots = self.parameters.params.get('N_knots', 1)
+        self.m_spec.N_knots = self.parameters.params.get('N_knots', 1) # 1 for no spline decomposition
+        self.m_spec.N_veiling = self.parameters.params.get('N_veiling', 0) # 0 for no veiling
+        if self.m_spec.N_veiling > 0:
+            self.m_spec.add_veiling(self.m_spec.N_veiling)
         
         if 'log_a' in self.parameters.params.keys():
             self.update_Cov(self.parameters.params) # DGP (2024-04-26): create the GP kernel...
@@ -135,7 +139,7 @@ class Retrieval:
     def PMN_run(self):
         
         # Pause the process to not overload memory on start-up
-        time.sleep(2)
+        time.sleep(1)
 
         # Run the MultiNest retrieval
         pymultinest.run(
