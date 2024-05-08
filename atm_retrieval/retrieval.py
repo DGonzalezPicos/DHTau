@@ -147,7 +147,7 @@ class Retrieval:
             Prior=self.parameters, 
             n_dims=self.parameters.n_params, 
             outputfiles_basename=f'{self.run_dir}/pmn_', 
-            resume=False, 
+            resume=True, 
             verbose=True, 
             const_efficiency_mode=True, 
             sampling_efficiency=self.sampling_efficiency, 
