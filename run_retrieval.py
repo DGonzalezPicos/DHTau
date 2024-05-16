@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'night2_veiling'
+run = 'testing_016'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -106,8 +106,8 @@ if args.pre_processing:
     
     ## Load data
     # DGP (2024-04-21) run retrieval on two nights
-    # file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
-    #              f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
+    file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
+                 f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
     
     # run retrieval on one night (choose night 1 or 2)
     file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
@@ -190,7 +190,7 @@ if args.pre_processing:
     
 
 if args.prior_check:
-    import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt # type: ignore
     print('--> Prior predictive check...')
     
     d_spec = pickle_load(run_dir / 'd_spec.pickle')
