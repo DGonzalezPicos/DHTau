@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_016'
+run = 'testing_022'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -83,8 +83,8 @@ constant_params = {
     'distance': 133.3, # [pc] Gaia EDR3 parallactic distance from Bailer-Jones et al. (2021)
     # 'log_g' : 4.0,
     'epsilon_limb' : 0.5,
-    'N_knots': 1, # 2048/N_knots high-pass filter
-    'N_veiling': 5, # number of veiling components
+    'N_knots': 5, # 2048/N_knots high-pass filter
+    'N_veiling': 1, # number of veiling components
     'cov_mode': 'GP', # 'GP' or 'covariance'
     
 }

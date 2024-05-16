@@ -147,7 +147,7 @@ class Retrieval:
             Prior=self.parameters, 
             n_dims=self.parameters.n_params, 
             outputfiles_basename=f'{self.run_dir}/pmn_', 
-            resume=True, 
+            resume=True,  # changed from False to True
             verbose=True, 
             const_efficiency_mode=True, 
             sampling_efficiency=self.sampling_efficiency, 
@@ -236,7 +236,7 @@ class Retrieval:
             self.d_spec, 
             self.m_spec,
             self.loglike,
-            Cov=getattr(self, 'Cov', None),
+            Cov=None, # calculate the full covariance matrix is slow...
             xlabel=r'Wavelength [nm]',
             ylabel=r'Flux [erg/s/cm$^2$/cm]',
             ax_spec=ax_spec,
@@ -287,6 +287,8 @@ class Retrieval:
         print(f' - Saved {self.run_dir / f"plots/retrieval_summary_{fig_label}.pdf"}')
             
         if self.evaluation:
+            
+            self.full_cov_matrix()
                        
             figs.fig_bestfit_model(
                 self.d_spec, 
@@ -311,6 +313,31 @@ class Retrieval:
         
         # Check the prior space 
         figs.fig_prior_check(self, fig_name=self.run_dir / 'plots/prior_check.pdf')
+        return self
+    
+    def full_cov_matrix(self):
+        
+        pickle_file = self.run_dir / 'Cov.pickle'
+        if pickle_file.exists():
+            print(f' - Loading full covariance matrix from {pickle_file}...')
+            with open(pickle_file, 'rb') as f:
+                self.Cov = pickle.load(f)
+                
+            return self
+        print(f' - Calculating full covariance matrix...')
+        # Calculate the full covariance matrix
+        for i in range(self.d_spec.n_orders):
+            for j in range(self.d_spec.n_dets):
+                if self.Cov[i,j] is not None:
+                    if not hasattr(self.Cov[i,j], 'diag'):
+                        self.Cov[i,j].diag = np.diag(self.Cov[i,j].get_dense_cov())
+                        
+        # save as pickle
+        with open(pickle_file, 'wb') as f:
+            pickle.dump(self.Cov, f)
+            
+        delattr(self.Cov, 'cov')
+        print(f' - Saved full covariance matrix to {self.run_dir / "Cov.pickle"}')
         return self
         
         

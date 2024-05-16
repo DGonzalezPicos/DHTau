@@ -46,7 +46,7 @@ class LogLikelihood:
                 if N_ij == 0: # skip if no valid data points
                     # print(f'Warning: no valid data points in order {i}, detector {j}')
                     continue
-                
+                # beta_ij**2
                 m_flux_ij = m_spec.flux[i,j,mask_ij]
                 M_ij = m_flux_ij[np.newaxis, :] # shape (1, n_pixels) initialize design matrix
                 

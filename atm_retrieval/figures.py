@@ -13,6 +13,7 @@ import pathlib
 import petitRADTRANS.nat_cst as nc
 
 from atm_retrieval.utils import quantiles, weigh_alpha
+from atm_retrieval.spline_model import SplineModel
 
 # make borders thicker
 mpl.rcParams['axes.linewidth'] = 1.5
@@ -308,31 +309,40 @@ def fig_bestfit_model(d_spec,
         
             x = d_spec.wave[i,j]
             mask_ij = d_spec.mask_isfinite[i,j]
-            if mask_ij.any():
-                # Show the observed and model spectra
             
-                if Cov is not None:
-                    err = np.sqrt(np.diag(Cov[i,j].get_dense_cov())) * LogLike.beta[i,j] * flux_factor
+            if np.sum(mask_ij) == 0:
+                continue
+            # if mask_ij.any():
+            # Show the observed and model spectra
+            # Cov = None
+            if Cov is not None:
+                if hasattr(Cov, 'diag'):
+                    err = np.sqrt(Cov.diag[i,j]) * LogLike.beta[i,j] * flux_factor
                 else:
-                    err = d_spec.err[i,j,mask_ij] * LogLike.beta[i,j] * flux_factor
-                
-                wave = d_spec.wave[i,j,mask_ij]
-                flux = d_spec.flux[i,j,mask_ij] * flux_factor
-                flux_full = d_spec.flux[i,j,:] * flux_factor
-                err_full = np.nan * np.ones_like(flux_full)
-                            
-                mean_err = np.mean(err)
-                err_full[mask_ij] = err
+                    err = np.sqrt(np.diag(Cov[i,j].get_dense_cov())) * LogLike.beta[i,j] * flux_factor
+            else:
+                # err = d_spec.err[i,j,mask_ij] * LogLike.beta[i,j] * flux_factor
+                err = np.ones_like(d_spec.flux[i,j,mask_ij]) * 0.01 * flux_factor # avoid calculating error for speed
+            
+            wave = d_spec.wave[i,j,mask_ij]
+            flux = d_spec.flux[i,j,mask_ij] * flux_factor
+            flux_full = d_spec.flux[i,j,:] * flux_factor
+            err_full = np.nan * np.ones_like(flux_full)
+                        
+            mean_err = np.mean(err)
+            err_full[mask_ij] = err
+            
+            m_flux_ij = m_spec.flux[i,j,mask_ij]
 
-                
-                ax_spec.plot(
-                    x, flux_full,
-                    c='k', lw=lw, label='Data'
-                    )
-                ax_spec.fill_between(
-                    x, flux_full-err_full, flux_full+err_full, 
-                    fc='k', alpha=0.4, ec='none',
-                    )
+            
+            ax_spec.plot(
+                x, flux_full,
+                c='k', lw=lw, label='Data'
+                )
+            ax_spec.fill_between(
+                x, flux_full-err_full, flux_full+err_full, 
+                fc='k', alpha=0.4, ec='none',
+                )
 
             if hasattr(LogLike, 'chi_squared_red'):
                 label = 'Best-fit model ' + \
@@ -342,37 +352,57 @@ def fig_bestfit_model(d_spec,
             else:
                 label = 'Best-fit model'
                     
-            # f = LogLike.f[:,i,j]
+            f = LogLike.f[:,i,j]
             
             # M = LogLike.M[i,j]
             # linear_model = M * f[:,None] * flux_factor
             # set ~mask to np.nan on last axis
             # linear_model[:,~mask_ij] = np.nan
-           
+            
             # model = np.sum(linear_model, axis=0) # full fitted linear model
             # model = f * m_spec.flux[i,j] * flux_factor
             # model = f @ m_spec.flux_spline[:,i,j] if m_spec.N_knots > 1 else f * m_spec.flux[i,j]
             # model *= flux_factor
             model = LogLike.m[i,j,:] * flux_factor
+            # model_spec = np.sum(LogLike.f[:N_knots,i,j] * LogLike.M[:N_knots,i,j,:], axis=0) # TODO:
+            # model_veiling = np.sum(LogLike.f[-1,i,j] * LogLike.M[-1,i,j,:], axis=0)
+            if m_spec.N_knots > 1:
+                    
+                # m_flux_ij_spline = SplineModel(N_knots=m_spec.N_knots, spline_degree=3)(m_flux_ij)
+                
+                # replace single-component matrix with multi-component matrix
+                M_ij = SplineModel(N_knots=m_spec.N_knots, spline_degree=3)(m_flux_ij)
+            else:
+                M_ij = m_spec.flux[i,j,mask_ij][np.newaxis,:]
             
             model[~mask_ij] = np.nan
             ax_spec.plot(x, model, lw=lw, label=label, color=bestfit_color)
+            N_veiling = getattr(m_spec, 'N_veiling', 0)
+            if N_veiling > 0:
+                    # build linear model with veiling components
+                N_pRT = len(f) - N_veiling
+                M_ij = np.concatenate([M_ij, m_spec.M_veiling[:,mask_ij]], axis=0) # add veiling components
+                
+                
+                m_veiling, m_pRT = (np.nan * np.ones_like(x) for _ in range(2))
+                m_veiling[mask_ij] = f[N_pRT:] @ M_ij[N_pRT:]
+                m_pRT[mask_ij] = f[:N_pRT] @ M_ij[:N_pRT]
+                ax_spec.plot(x, m_veiling, lw=lw, label='Veiling', color='magenta')
+                ax_spec.plot(x, m_pRT, lw=lw, label='pRT', color='navy')
 
-            if mask_ij.any():
+            # Plot the residuals
+            res_ij = flux_full - model
+            res_ij[~mask_ij] = np.nan
+            ax_res.plot(x, res_ij, c='k', lw=lw)
+            ax_res.plot(
+                [x.min(), x.max()], 
+                [0,0], c=bestfit_color, lw=1
+            )
 
-                # Plot the residuals
-                res_ij = flux_full - model
-                res_ij[~mask_ij] = np.nan
-                ax_res.plot(x, res_ij, c='k', lw=lw)
-                ax_res.plot(
-                    [x.min(), x.max()], 
-                    [0,0], c=bestfit_color, lw=1
+            ax_res.errorbar(
+                wave.min()-0.2, 0, yerr=1*mean_err, 
+                fmt='none', lw=1, ecolor='k', capsize=2, color='k', 
                 )
-
-                ax_res.errorbar(
-                    wave.min()-0.2, 0, yerr=1*mean_err, 
-                    fmt='none', lw=1, ecolor='k', capsize=2, color='k', 
-                    )
 
             if i==0 and j==0:
                 ax_spec.legend(
