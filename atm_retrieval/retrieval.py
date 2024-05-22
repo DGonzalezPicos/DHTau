@@ -336,7 +336,7 @@ class Retrieval:
         with open(pickle_file, 'wb') as f:
             pickle.dump(self.Cov, f)
             
-        delattr(self.Cov, 'cov')
+        # delattr(self.Cov, 'cov')
         print(f' - Saved full covariance matrix to {self.run_dir / "Cov.pickle"}')
         return self
         
