@@ -331,12 +331,12 @@ class Retrieval:
                 if self.Cov[i,j] is not None:
                     if not hasattr(self.Cov[i,j], 'diag'):
                         self.Cov[i,j].diag = np.diag(self.Cov[i,j].get_dense_cov())
+                        delattr(self.Cov[i,j], 'cov')
                         
         # save as pickle
         with open(pickle_file, 'wb') as f:
             pickle.dump(self.Cov, f)
             
-        # delattr(self.Cov, 'cov')
         print(f' - Saved full covariance matrix to {self.run_dir / "Cov.pickle"}')
         return self
         

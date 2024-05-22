@@ -383,10 +383,13 @@ def fig_bestfit_model(d_spec,
                 N_pRT = len(f) - N_veiling
                 M_ij = np.concatenate([M_ij, m_spec.M_veiling[:,mask_ij]], axis=0) # add veiling components
                 
-                
+                # print(f' - N_pRT = {N_pRT}, N_veiling = {N_veiling}')
+                # print(f' M_ij.shape = {M_ij.shape}, f.shape = {f.shape}')
                 m_veiling, m_pRT = (np.nan * np.ones_like(x) for _ in range(2))
-                m_veiling[mask_ij] = f[N_pRT:] @ M_ij[N_pRT:]
+                # m_veiling[mask_ij] = f[N_pRT:] @ M_ij[N_pRT:]
+                # m_pRT[mask_ij] = f[:N_pRT] @ M_ij[:N_pRT]
                 m_pRT[mask_ij] = f[:N_pRT] @ M_ij[:N_pRT]
+                m_veiling[mask_ij] = f[N_pRT:] @ M_ij[N_pRT:]
                 ax_spec.plot(x, m_veiling, lw=lw, label='Veiling', color='magenta')
                 ax_spec.plot(x, m_pRT, lw=lw, label='pRT', color='navy')
 
