@@ -45,7 +45,7 @@ class PT:
     #     self.spline(log_P_knots, T_knots, kind=kind)
     #     return self.temperature
         
-    def gradient(self, T_0, log_P_knots, dlnT_dlnP_knots, kind='linear'):
+    def gradient(self, T_0, log_P_knots, dlnT_dlnP_knots, dlog_P=0.0, kind='linear'):
         ''' Generate a temperature profile from the gradients at the knots
         
         Parameters
@@ -66,7 +66,13 @@ class PT:
         
         '''
         assert len(log_P_knots) == len(dlnT_dlnP_knots), 'log_P_knots and dlnT_dlnP_knots must have the same length'
-        self.log_P_knots = np.array(log_P_knots)
+        # self.log_P_knots = np.array(log_P_knots)
+        # self.dlog_P = params.get('dlog_P', 0.0)
+        self.dlog_P = dlog_P
+        dlog_P_array = np.zeros_like(log_P_knots) + self.dlog_P
+        dlog_P_array[[0,-1]] = [0, 0] # don't shift the top and bottom knots
+        self.log_P_knots = log_P_knots + dlog_P_array
+        
         self.dlnT_dlnP_knots = np.array(dlnT_dlnP_knots)
         # Knots for the spline interpolation, sort from high to low pressure
         sort = np.argsort(self.log_P_knots)[::-1]

@@ -259,7 +259,10 @@ class pRT_model:
             dlnT_dlnP_keys = sorted([k for k in params.keys() if k.startswith('dlnT_dlnP')])
             dlnT_dlnP = [params[key] for key in dlnT_dlnP_keys]
             assert len(dlnT_dlnP) == len(params['log_P_knots']), 'dlnT_dlnP and log_P_knots must have the same length'
-            self.temperature = self.PT.gradient(params['T1'], params['log_P_knots'], dlnT_dlnP, kind='linear')
+            self.temperature = self.PT.gradient(params['T1'], params['log_P_knots'], 
+                                                dlnT_dlnP, 
+                                                params.get('dlog_P', 0.0),
+                                                kind='linear')
             
         # set negative values to 1e-1 K
         self.temperature[self.temperature < 1.] = 1e-1

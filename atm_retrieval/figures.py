@@ -379,7 +379,7 @@ def fig_bestfit_model(d_spec,
             ax_spec.plot(x, model, lw=lw, label=label, color=bestfit_color)
             N_veiling = getattr(m_spec, 'N_veiling', 0)
             if N_veiling > 0:
-                    # build linear model with veiling components
+                # build linear model with veiling components
                 N_pRT = len(f) - N_veiling
                 M_ij = np.concatenate([M_ij, m_spec.M_veiling[:,mask_ij]], axis=0) # add veiling components
                 
@@ -434,6 +434,7 @@ def fig_prior_check(ret, fig_name='prior_check.pdf'):
     colors = ['limegreen', 'b', 'r']
 
     m = []
+    m_veiling = []
     for i, theta_i in enumerate(theta):
         cube = theta_i * np.ones(ret.parameters.ndim)
         sample = ret.parameters(cube) # transform the cube to the parameter space
@@ -449,6 +450,8 @@ def fig_prior_check(ret, fig_name='prior_check.pdf'):
         print(sample_dict)
         print(f' - log_L = {log_L:.1e}\n')
         m.append(ret.loglike.m) # store model
+        if hasattr(ret.m_spec, 'veiling_model'):
+            m_veiling.append(ret.m_spec.veiling_model) # store veiling model
         
         
         fig_PT_prior, ax_PT = fig_PT(ret.pRT_model.PT, ax_PT, fig=fig_PT_prior,
@@ -492,6 +495,9 @@ def fig_prior_check(ret, fig_name='prior_check.pdf'):
                     
                     residuals = flux - m_spec
                     ax[1].plot(wave, residuals, c=colors[i], lw=lw, alpha=0.8)
+                    if len(m_veiling) > 0:
+                        ax[0].plot(wave, m_veiling[i][order,det], c=colors[i], ls=':', lw=lw, alpha=0.8)
+                        
                     
             pdf.savefig(fig)
         # clear the axes

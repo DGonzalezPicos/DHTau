@@ -116,9 +116,16 @@ class Retrieval:
             # normalize the model spectrum in the same way as the data
             self.m_spec.normalize_flux_per_order(**self.d_spec.normalize_args)
             
-        if self.apply_veiling:
+        if self.apply_veiling: # veiling with linear model
             # print(f' - Applying veiling with r_k = {self.parameters.params["r_k"]}')
             self.m_spec.veiling(self.parameters.params['r_k'], replace_flux=True)
+            
+            
+        if "r_0" in self.parameters.params.keys(): # veiling with power-law model (NEW: 2024-05-28)
+            self.m_spec.add_veiling_power_law(self.parameters.params["r_0"],
+                                                    self.parameters.params.get("alpha", 0.0), # 0.0 = constant
+                                                    self.d_spec.wave,
+                                                    np.nanmin(self.d_spec.wave))
             
             
         # generate spline model for flux decomposition

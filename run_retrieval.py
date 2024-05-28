@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_022'
+run = 'veiling_powerlaw_1'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -34,6 +34,8 @@ free_params = {
 
     'log_g': [(2.0,5.0), r'$\log\ g$'], 
     # 'r_k'  : [(0.0, 3.0), r'$r_k$'], # veiling factor (0 for no veiling, can be > 1)
+    'r_0': [(0.0, 0.8), r'$r_0$'], # veiling amplitude (0 for no veiling, maximum 1 if flux is normalized to 1)
+    'alpha': [(0.0, 5.0), r'$\alpha$'], # veiling index (power-law), must be positive (increasing with wavelength)
 
     'vsini' : ([2.0, 16.0], r'$v \sin(i)$ [km/s]'),
     # 'vsini' : ([5.2, 5.4], r'$v \sin(i)$ [km/s]'),
@@ -42,10 +44,11 @@ free_params = {
     
     # chemistry
     'log_12CO': [(-12,-2), r'$\log\ \mathrm{^{12}CO}$'], 
+    # 'log_12CO': [(-4,-3), r'$\log\ \mathrm{^{12}CO}$'], 
     'log_13CO': [(-12,-2), r'$\log\ \mathrm{^{13}CO}$'], 
 
     'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
-    
+    # 'log_H2O'  : ([-4, -3], r'$\log$(H$_2$O)'),
     # isotologue of water with 18O
     'log_H2O_181': ([-12, -2], r'$\log\ \mathrm{H_2^{18}O}$'),
     'log_Na'   : ([-12, -2], r'$\log$\ Na'),
@@ -68,13 +71,15 @@ free_params = {
     
     # temperature gradients
     'T1': ([3000, 10000], r'$T_1$ [K]'), # bottom of the atmosphere (hotter)
-    'dlnT_dlnP_1': [(0.04,  0.40), r'$\nabla T_1$'],
-    'dlnT_dlnP_2': [(0.04,  0.40), r'$\nabla T_2$'],
-    'dlnT_dlnP_3': [(-0.04, 0.40), r'$\nabla T_3$'],
-    'dlnT_dlnP_4': [(-0.10, 0.40), r'$\nabla T_4$'],
-    'dlnT_dlnP_5': [(-0.10, 0.40), r'$\nabla T_5$'],
-    'dlnT_dlnP_6': [(-0.10, 0.40), r'$\nabla T_4$'],
-    'dlnT_dlnP_7': [(-0.10, 0.40), r'$\nabla T_5$'],
+    'dlnT_dlnP_1': [(0.06, 0.40), r'$\nabla T_1$'],
+    'dlnT_dlnP_2': [(0.06, 0.40), r'$\nabla T_2$'],
+    'dlnT_dlnP_3': [(0.06, 0.40), r'$\nabla T_3$'],
+    'dlnT_dlnP_4': [(0.06, 0.40), r'$\nabla T_4$'],
+    'dlnT_dlnP_5': [(0.04, 0.40), r'$\nabla T_5$'],
+    'dlnT_dlnP_6': [(0.02, 0.40), r'$\nabla T_6$'],
+    'dlnT_dlnP_7': [(0.00, 0.40), r'$\nabla T_7$'],
+    
+    'dlog_P': [(-0.8, 0.8), r'$\log \Delta P$'], # log of the pressure shift for the PT knots (must be abs(dlog_P) < 1)
 }
 
 constant_params = {
