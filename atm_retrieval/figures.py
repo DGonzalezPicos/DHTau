@@ -397,6 +397,13 @@ def fig_bestfit_model(d_spec,
                 m_veiling[mask_ij] = f[N_pRT:] @ M_ij[N_pRT:]
                 ax_spec.plot(x, m_veiling, lw=lw, label='Veiling', color='magenta')
                 ax_spec.plot(x, m_pRT, lw=lw, label='pRT', color='navy')
+            if hasattr(m_spec, 'veiling_model'):
+                try: # testing...
+                    ax_spec.plot(x, m_spec.veiling_model[i,j,:], lw=lw, ls=':', 
+                                 label='Veiling model' if (i==0 and j==0) else None,
+                                 color='magenta')
+                except:
+                    pass
 
             # Plot the residuals
             res_ij = flux_full - model
