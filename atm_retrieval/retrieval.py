@@ -62,9 +62,12 @@ class Retrieval:
                         scale_GP_amp = True, 
                         max_separation = 20, 
         )
-        if 'log_l' in self.parameters.params.keys():
+        
+        # print(f' self.parameters.params.keys() = {self.parameters.params.keys()}')
+        # if 'log_l' in self.parameters.params.keys():
+        if 'log_l' in self.parameters.param_priors.keys(): # NEW: properly set the max_separation (before was fixed to 20, veeery slow)
             self.cov_kwargs['max_separation'] = self.cov_kwargs['trunc_dist'] * 10**self.parameters.param_priors['log_l'][1]
-
+            
         for i in range(self.d_spec.n_orders):
             for j in range(self.d_spec.n_dets):
                 
@@ -116,9 +119,9 @@ class Retrieval:
             # normalize the model spectrum in the same way as the data
             self.m_spec.normalize_flux_per_order(**self.d_spec.normalize_args)
             
-        if self.apply_veiling: # veiling with linear model
-            # print(f' - Applying veiling with r_k = {self.parameters.params["r_k"]}')
-            self.m_spec.veiling(self.parameters.params['r_k'], replace_flux=True)
+        # if self.apply_veiling: # veiling with linear model
+        #     # print(f' - Applying veiling with r_k = {self.parameters.params["r_k"]}')
+        #     self.m_spec.veiling(self.parameters.params['r_k'], replace_flux=True)
             
             
         if "r_0" in self.parameters.params.keys(): # veiling with power-law model (NEW: 2024-05-28)
@@ -131,7 +134,7 @@ class Retrieval:
         # generate spline model for flux decomposition
         self.m_spec.N_knots = self.parameters.params.get('N_knots', 1) # 1 for no spline decomposition
         self.m_spec.N_veiling = self.parameters.params.get('N_veiling', 0) # 0 for no veiling
-        if self.m_spec.N_veiling > 0:
+        if self.m_spec.N_veiling > 1:
             self.m_spec.add_veiling(self.m_spec.N_veiling)
         
         if 'log_a' in self.parameters.params.keys():
@@ -208,6 +211,7 @@ class Retrieval:
         
         if self.evaluation:
             posterior, bestfit_params = self.PMN_analyzer()
+            print(f' shape posterior = {posterior.shape}')
             
         else:
             # Read the parameters of the best-fitting model
@@ -226,10 +230,11 @@ class Retrieval:
         
         fig_label = 'final' if self.evaluation else f'{self.cb_count}'
 
-            
+        fig = plt.figure(figsize=(posterior.shape[1], posterior.shape[1]))
         fig = figs.simple_cornerplot(posterior,
                                 labels, 
-                                bestfit_params=bestfit_params)
+                                bestfit_params=bestfit_params,
+                                fig=fig,)
         l, b, w, h = [0.32,3.42,0.65,0.20]
 
         ax_res_dim  = [l, b*(h+0.03), w, 0.97*h/5]
@@ -238,7 +243,7 @@ class Retrieval:
 
         ax_spec = fig.add_axes(ax_spec_dim)
         ax_res = fig.add_axes(ax_res_dim)
-        
+        print(f' - Plotting bestfit model...')
         ax_spec, ax_res = figs.fig_bestfit_model(
             self.d_spec, 
             self.m_spec,
@@ -278,7 +283,11 @@ class Retrieval:
         if hasattr(self.pRT_model, 'int_contr_em'):
             if np.sum(np.isnan(self.pRT_model.int_contr_em)) == 0:
                 print(f'Copying integrated contribution emission from pRT_atm to PT')
-                self.pRT_model.PT.int_contr_em = self.pRT_model.int_contr_em
+                # print(f' shape int_contr_em = {self.pRT_model.int_contr_em.shape}')
+                # self.pRT_model.PT.int_contr_em = self.pRT_model.int_contr_em
+                setattr(self.pRT_model.PT, 'int_contr_em', np.copy(self.pRT_model.int_contr_em))
+                
+        print(f' - Plotting PT profile...')
         ax_PT = figs.fig_PT(
             PT=self.pRT_model.PT, 
             ax=ax_PT, 
@@ -294,8 +303,8 @@ class Retrieval:
         print(f' - Saved {self.run_dir / f"plots/retrieval_summary_{fig_label}.pdf"}')
             
         if self.evaluation:
-            
-            self.full_cov_matrix()
+            print(f' - Evaluation figures...')
+            # self.full_cov_matrix()
                        
             figs.fig_bestfit_model(
                 self.d_spec, 

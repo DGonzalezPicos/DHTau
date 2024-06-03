@@ -11,7 +11,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'veiling_powerlaw_1'
+run = 'testing_024'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -89,7 +89,7 @@ constant_params = {
     # 'log_g' : 4.0,
     'epsilon_limb' : 0.5,
     'N_knots': 5, # 2048/N_knots high-pass filter
-    'N_veiling': 1, # number of veiling components
+    'N_veiling': 0, # number of veiling components
     'cov_mode': 'GP', # 'GP' or 'covariance'
     
 }

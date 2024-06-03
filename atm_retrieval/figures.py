@@ -125,7 +125,7 @@ def fig_PT(PT,
                 PT.int_contr_em, p, 
                 c='red', lw=1, alpha=0.4,
                 )
-            weigh_alpha(PT.int_contr_em, p, np.linspace(0,10000,p.size), ax, alpha_min=0.5, plot=True)
+            # weigh_alpha(PT.int_contr_em, p, np.linspace(0,10000,p.size), ax, alpha_min=0.5, plot=True)
             # define photosphere as region where PT.int_contr_em > np.quantile(PT.int_contr_em, 0.9)
             photosphere = PT.int_contr_em > np.quantile(PT.int_contr_em, 0.95)
             P_phot = np.mean(p[photosphere])
@@ -149,7 +149,6 @@ def fig_PT(PT,
                 # xlabel='Integrated contribution emission',
                 xlim=(0,np.max(PT.int_contr_em)*1.1),
                 )
-        
     if hasattr(PT, 'temperature_envelopes'):
         # Plot the PT confidence envelopes
         for i in range(3):
@@ -228,6 +227,7 @@ def simple_cornerplot(posterior,
                             
                             fill_contours=True,
                             smooth=smooth,
+                            fig=fig,
                             )
         if bestfit_params is not None:
             corner.overplot_lines(fig, bestfit_params, color='green', lw=0.5)
@@ -319,7 +319,12 @@ def fig_bestfit_model(d_spec,
                 if hasattr(Cov, 'diag'):
                     err = np.sqrt(Cov.diag[i,j]) * LogLike.beta[i,j] * flux_factor
                 else:
-                    err = np.sqrt(np.diag(Cov[i,j].get_dense_cov())) * LogLike.beta[i,j] * flux_factor
+                    # print(f' - Calculating error from dense covariance matrix order, det = {i}, {j}')
+                    err = np.sqrt(np.diag(Cov[i,j].get_dense_cov())) * LogLike.beta[i,j] * flux_factor #
+                    # print(f' shape Cov[i,j].cov = {Cov[i,j].cov.shape}')
+                    # print(f' shape Cov[i,j].cov[0] = {Cov[i,j].cov[0].shape}')  
+                    # err = np.sqrt(Cov[i,j].cov[0]) * LogLike.beta[i,j] * flux_factor
+                    
             else:
                 # err = d_spec.err[i,j,mask_ij] * LogLike.beta[i,j] * flux_factor
                 err = np.ones_like(d_spec.flux[i,j,mask_ij]) * 0.01 * flux_factor # avoid calculating error for speed

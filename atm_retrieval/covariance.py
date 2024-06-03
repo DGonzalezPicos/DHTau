@@ -253,6 +253,9 @@ class GaussianProcesses(Covariance):
     
     def get_dense_cov(self):
         
+        # if hasattr(self.diag):
+        #     return np.diag(self.diag)
+        
         # Full covariance matrix
         cov_full = np.zeros((self.cov.shape[1], self.cov.shape[1]))
         
