@@ -95,7 +95,7 @@ constant_params = {
 }
 
 parameters_file = run_dir / 'parameters.json'
-cache = False
+cache = True
 
 if parameters_file.exists() and cache:
     print(f'--> Loading parameters from file {parameters_file}...')
