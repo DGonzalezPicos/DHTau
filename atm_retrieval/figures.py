@@ -445,6 +445,7 @@ def fig_prior_check(ret, fig_name='prior_check.pdf'):
     theta = [0.0, 0.5, 1.0] # lower edge, center, upper edge
     colors = ['limegreen', 'b', 'r']
 
+    f = []
     m = []
     m_veiling = []
     for i, theta_i in enumerate(theta):
@@ -456,7 +457,7 @@ def fig_prior_check(ret, fig_name='prior_check.pdf'):
         # m_spec = ret.pRT_model(ret.parameters.params) # generate the model spectrum
         # m_spec.N_knots = ret.parameters.params.get('N_knots', 1)
         log_L = ret.PMN_lnL_func()
-            
+
         # log_L = ret.loglike(m_spec, ret.Cov)
         sample_dict = dict(zip(ret.parameters.param_keys, sample))
         print(sample_dict)
@@ -483,13 +484,14 @@ def fig_prior_check(ret, fig_name='prior_check.pdf'):
     ax[1].set(ylabel='Residuals', xlabel='Wavelength / nm')
     with PdfPages(fig_name) as pdf:
         for order in range(ret.d_spec.n_orders):
-
+            
             ax[0].set(xlim=(ret.d_spec.wave[order].min()-0.1, 
                             ret.d_spec.wave[order].max()+0.1)
                         )
             lw = 1.0
             ax[1].axhline(0, c='k', lw=0.5)
             for det in range(ret.d_spec.n_dets):
+
                 wave = ret.d_spec.wave[order,det]
                 flux = ret.d_spec.flux[order,det]
                 err = np.nan * np.ones_like(flux)
@@ -502,6 +504,10 @@ def fig_prior_check(ret, fig_name='prior_check.pdf'):
                 ax[0].fill_between(wave, flux-err, flux+err, fc='k', alpha=0.2)
                 ax[1].fill_between(wave, -err, err, fc='k', alpha=0.2)
                 for i, theta_i in enumerate(theta):
+                    print(i,order,det)
+                    print(f)
+                    print(f[i][:,order,det])
+                    print()
                     m_spec = m[i][order,det]
                     ax[0].plot(wave, m_spec, c=colors[i], lw=lw, alpha=0.8)
                     
