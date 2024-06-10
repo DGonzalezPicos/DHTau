@@ -9,6 +9,7 @@ from atm_retrieval.spectrum import DataSpectrum
 from atm_retrieval.pRT_model import pRT_model
 from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
+import atm_retrieval.figures as figs
 
 
 run = 'testing_024'
@@ -24,6 +25,7 @@ parser.add_argument('--pre_processing', '-p', action='store_true', default=False
 parser.add_argument('--prior_check', '-c', action='store_true', default=False)
 parser.add_argument('--retrieval', '-r', action='store_true', default=False)
 parser.add_argument('--evaluation', '-e', action='store_true', default=False)
+parser.add_argument('--test', '-t', action='store_true', default=False)
 args = parser.parse_args()
 
 ## Define parameters
@@ -48,7 +50,7 @@ free_params = {
     'log_13CO': [(-12,-2), r'$\log\ \mathrm{^{13}CO}$'], 
 
     'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
-    # 'log_H2O'  : ([-4, -3], r'$\log$(H$_2$O)'),
+    
     # isotologue of water with 18O
     'log_H2O_181': ([-12, -2], r'$\log\ \mathrm{H_2^{18}O}$'),
     'log_Na'   : ([-12, -2], r'$\log$\ Na'),
@@ -111,8 +113,8 @@ if args.pre_processing:
     
     ## Load data
     # DGP (2024-04-21) run retrieval on two nights
-    file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
-                 f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
+    #file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
+      #           f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
     
     # run retrieval on one night (choose night 1 or 2)
     file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
@@ -251,3 +253,27 @@ if args.evaluation:
             ln_Z_err=None, 
             nullcontext=None
             )
+    
+
+if args.test:
+    print('--> Testing...')
+
+    # Load the retrieval object
+    d_spec = pickle_load(run_dir / 'd_spec.pickle')
+    pRT = pickle_load(run_dir / 'atm.pickle')
+    ret = Retrieval(parameters, d_spec, pRT, run=run)
+    
+    ret.evaluation = True
+    ret.Testing(
+            n_samples=None, 
+            n_live=None, 
+            n_params=None, 
+            live_points=None, 
+            posterior=None, 
+            stats=None,
+            max_ln_L=None, 
+            ln_Z=None, 
+            ln_Z_err=None, 
+            nullcontext=None
+    )
+    

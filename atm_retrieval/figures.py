@@ -101,6 +101,7 @@ def fig_sigma_clip(d_spec, clip_mask, fig_name=None):
         #plt.show()
         plt.close(fig)
     return fig, ax
+
 def fig_PT(PT,
             ax=None, 
             fig=None,
@@ -181,6 +182,152 @@ def fig_PT(PT,
         plt.close(fig)
    
     return fig, ax
+
+def fig_PT_phoenix(PT,
+            ax=None, 
+            fig=None,
+            xlim=None, 
+            bestfit_color='black',
+            envelopes_color='black',
+            int_contr_em_color='red',
+            fig_name=None,
+    ):
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(7,7))
+        
+    # assert hasattr(PT, 'temperature_envelopes'), 'No temperature envelopes found'
+    
+    p = PT.pressure
+    if hasattr(PT, 'int_contr_em'):
+        if np.max(PT.int_contr_em) > 0.0: # additional check
+            # Plot the integrated contribution emission
+            ax_twin = ax.twiny()
+            ax_twin.plot(
+                PT.int_contr_em, p, 
+                c='red', lw=1, alpha=0.4,
+                )
+            # weigh_alpha(PT.int_contr_em, p, np.linspace(0,10000,p.size), ax, alpha_min=0.5, plot=True)
+            # define photosphere as region where PT.int_contr_em > np.quantile(PT.int_contr_em, 0.9)
+            photosphere = PT.int_contr_em > np.quantile(PT.int_contr_em, 0.95)
+            P_phot = np.mean(p[photosphere])
+            T_phot = np.mean(PT.temperature_envelopes[3][photosphere])
+            T_phot_err = np.std(PT.temperature_envelopes[3][photosphere])
+            # print(f' - Photospheric temperature: {T_phot:.1f} +- {T_phot_err:.1f} K')
+            # make empty marker
+            
+            #ax.scatter(T_phot, P_phot, c='red',
+             #           marker='o', 
+              #          s=50, 
+               #         alpha=0.5,
+                #        zorder=10,
+                 #       label=f'T$_\mathrm{{phot}}$ = {T_phot:.0f} $\pm$ {T_phot_err:.0f} K')
+            
+            
+            # remove xticks
+            ax_twin.set_xticks([])
+            ax_twin.spines['top'].set_visible(False)
+            ax_twin.spines['bottom'].set_visible(False)
+            ax_twin.set(
+                # xlabel='Integrated contribution emission',
+                xlim=(0,np.max(PT.int_contr_em)*1.1),
+                )
+    if hasattr(PT, 'temperature_envelopes'):
+        # Plot the PT confidence envelopes
+        for i in range(3):
+            ax.fill_betweenx(
+                y=p, x1=PT.temperature_envelopes[i], 
+                x2=PT.temperature_envelopes[-i-1], 
+                color=envelopes_color, ec='none', 
+                alpha=0.3,
+                )
+
+        # Plot the median PT
+        ax.plot(
+            PT.temperature_envelopes[3], p, 
+            c=bestfit_color, lw=2, label='retrieved'
+    )
+        
+
+        xlim = (0, PT.temperature_envelopes[-1].max()*1.02) if xlim is None else xlim
+    else:
+        ax.plot(PT.temperature, p, c=bestfit_color, lw=2,label='retrieved')
+        xlim = (0, PT.temperature.max()*1.02) if xlim is None else xlim
+    ax.set(xlabel='Temperature (K)', ylabel='Pressure (bar)',
+            ylim=(p.max(), p.min()), yscale='log',
+            xlim=xlim,
+            )
+    #ax.legend(loc='upper right', fontsize=12)
+
+    ### PHOENIX PART ###
+
+    from phoenix import Phoenix
+
+    # plot a range of PT profiles for different temperatures
+    temperatures = np.arange(2800, 4400, 200)
+    loggs = [4.0, 5.0]
+    colors = plt.cm.plasma(np.linspace(0, 1, len(temperatures)))
+    #fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+
+    for i, T in enumerate(temperatures):
+        for j, logg in enumerate(loggs):
+            ph = Phoenix(T, logg)
+            
+            label = f'logg = {logg}' if i == 0 else None
+            if j == 0:
+                ls = '-' 
+            if j == 1:
+                ls = '--'  
+            if j == 2:
+                ls = '-.'  
+            ph.plot_PT(ax=ax, color=colors[i], ls=ls, label=label, alpha=0.7, lw=2.)
+
+    # create colorbar
+    cbar_im = ax.scatter([], [], c=[], cmap='plasma', vmin=temperatures.min(), vmax=temperatures.max())
+    cbar = fig.colorbar(cbar_im, ax=ax, label='Temperature [K]')
+    #ax.set_ylim(1e2, 1e-5) # region we are interested in
+            
+    #SPHINX PART
+
+    def load_sphinx_model(Teff=3100.0, log_g=4.0, logZ=0.0, C_O=0.50):
+        
+        path = pathlib.Path('Sphinx files/')
+        sign = '+' if logZ >= 0 else '-'
+    
+        # PT profile
+        file = path / f'Teff_{Teff:.1f}_logg_{log_g}_logZ_{sign}{abs(logZ)}_CtoO_{C_O}_atms.txt'
+        assert file.exists(), f'File {file} does not exist.'
+        t, p = np.loadtxt(file, unpack=True)
+    
+        # VMRs
+        file_chem = path / file.name.replace('atms', 'mixing_ratios')
+    
+        with open(file_chem, 'r') as f:
+            header = f.readline()
+        
+        header = header.split(',')
+        header[0] = 'pressure'
+        # remove spaces
+        header = [h.strip() for h in header]
+        VMRs = np.loadtxt(file_chem, unpack=True)
+        VMRs = {k:v for k, v in zip(header, VMRs)}
+    
+        return t, p, VMRs, file
+
+    t_sphinx,p_sphinx, VMRs_sphinx, file_sphinx = load_sphinx_model()
+
+    ax.plot(t_sphinx,p_sphinx,color='green', label='Sphinx T=3100K, logg=4.0')
+
+    ax.legend()
+    if fig_name is not None:
+        fig.savefig(fig_name)
+        print(f' - Saved {fig_name}')
+        plt.close(fig)
+   
+    return fig, ax
+
+
+
 
 
 def simple_cornerplot(posterior, 
