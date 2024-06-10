@@ -545,9 +545,13 @@ def fig_bestfit_model(d_spec,
                 ax_spec.plot(x, m_veiling, lw=lw, label='Veiling', color='magenta')
                 ax_spec.plot(x, m_pRT, lw=lw, label='pRT', color='navy')
             if hasattr(m_spec, 'veiling_model'):
-                try: # testing...
-                    ax_spec.plot(x, m_spec.veiling_model[i,j,:], lw=lw, ls=':', 
-                                 label='Veiling model' if (i==0 and j==0) else None,
+                try: 
+                    # if we multiply the veiling model with the mean amplitude of the flux we get the veiling flux
+                    # for now just show the veiling factor
+                    veiling_factor = m_spec.veiling_model[i,j,:]
+                    veiling_flux = veiling_factor * np.mean(f)
+                    ax_spec.plot(x, veiling_factor, lw=lw, ls=':', 
+                                 label='Veiling factor' if (i==0 and j==0) else None,
                                  color='magenta')
                 except:
                     pass
