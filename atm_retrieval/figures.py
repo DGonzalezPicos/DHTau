@@ -289,7 +289,10 @@ def fig_PT_phoenix(PT,
             
     #SPHINX PART
 
-    def load_sphinx_model(Teff=3100.0, log_g=4.0, logZ=0.0, C_O=0.50):
+    Teff = 3000.0
+    log_g = 5.0
+
+    def load_sphinx_model(Teff=Teff, log_g=log_g, logZ=0.0, C_O=0.50):
         
         path = pathlib.Path('Sphinx files/')
         sign = '+' if logZ >= 0 else '-'
@@ -299,6 +302,7 @@ def fig_PT_phoenix(PT,
         assert file.exists(), f'File {file} does not exist.'
         t, p = np.loadtxt(file, unpack=True)
     
+        """
         # VMRs
         file_chem = path / file.name.replace('atms', 'mixing_ratios')
     
@@ -311,12 +315,12 @@ def fig_PT_phoenix(PT,
         header = [h.strip() for h in header]
         VMRs = np.loadtxt(file_chem, unpack=True)
         VMRs = {k:v for k, v in zip(header, VMRs)}
-    
-        return t, p, VMRs, file
+        """
+        return t, p #, VMRs, file
 
-    t_sphinx,p_sphinx, VMRs_sphinx, file_sphinx = load_sphinx_model()
+    t_sphinx,p_sphinx= load_sphinx_model()
 
-    ax.plot(t_sphinx,p_sphinx,color='green', label='Sphinx T=3100K, logg=4.0')
+    ax.plot(t_sphinx,p_sphinx,color='green', label=f'Sphinx T={Teff}K, logg={log_g}')
 
     ax.legend()
     if fig_name is not None:
