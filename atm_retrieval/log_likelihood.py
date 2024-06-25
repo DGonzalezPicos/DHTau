@@ -110,7 +110,7 @@ class LogLikelihood:
                 # convert from matrix to array again with the fitted linear amplitudes
                 m_flux_ij_scaled = f_ij @ M_ij
                     
-                    
+                #print(M_ij.shape)
                 # else:
                 #     m_flux_ij_scaled, f_ij = self.get_flux_scaling(d_flux_ij, m_flux_ij, inv_cov_ij)
                 #     f_ij = np.atleast_1d(f_ij)

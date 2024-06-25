@@ -62,12 +62,9 @@ class Retrieval:
                         scale_GP_amp = True, 
                         max_separation = 20, 
         )
-        
-        # print(f' self.parameters.params.keys() = {self.parameters.params.keys()}')
-        # if 'log_l' in self.parameters.params.keys():
-        if 'log_l' in self.parameters.param_priors.keys(): # NEW: properly set the max_separation (before was fixed to 20, veeery slow)
+        if 'log_l' in self.parameters.params.keys():
             self.cov_kwargs['max_separation'] = self.cov_kwargs['trunc_dist'] * 10**self.parameters.param_priors['log_l'][1]
-            
+
         for i in range(self.d_spec.n_orders):
             for j in range(self.d_spec.n_dets):
                 
@@ -119,22 +116,15 @@ class Retrieval:
             # normalize the model spectrum in the same way as the data
             self.m_spec.normalize_flux_per_order(**self.d_spec.normalize_args)
             
-        # if self.apply_veiling: # veiling with linear model
-        #     # print(f' - Applying veiling with r_k = {self.parameters.params["r_k"]}')
-        #     self.m_spec.veiling(self.parameters.params['r_k'], replace_flux=True)
-            
-            
-        if "r_0" in self.parameters.params.keys(): # veiling with power-law model (NEW: 2024-05-28)
-            self.m_spec.add_veiling_power_law(self.parameters.params["r_0"],
-                                                    self.parameters.params.get("alpha", 0.0), # 0.0 = constant
-                                                    self.d_spec.wave,
-                                                    np.nanmin(self.d_spec.wave))
+        if self.apply_veiling:
+            # print(f' - Applying veiling with r_k = {self.parameters.params["r_k"]}')
+            self.m_spec.veiling(self.parameters.params['r_k'], replace_flux=True)
             
             
         # generate spline model for flux decomposition
         self.m_spec.N_knots = self.parameters.params.get('N_knots', 1) # 1 for no spline decomposition
         self.m_spec.N_veiling = self.parameters.params.get('N_veiling', 0) # 0 for no veiling
-        if self.m_spec.N_veiling > 1:
+        if self.m_spec.N_veiling > 0:
             self.m_spec.add_veiling(self.m_spec.N_veiling)
         
         if 'log_a' in self.parameters.params.keys():
@@ -157,7 +147,7 @@ class Retrieval:
             Prior=self.parameters, 
             n_dims=self.parameters.n_params, 
             outputfiles_basename=f'{self.run_dir}/pmn_', 
-            resume=True,  # changed from False to True
+            resume=False, 
             verbose=True, 
             const_efficiency_mode=True, 
             sampling_efficiency=self.sampling_efficiency, 
@@ -211,7 +201,6 @@ class Retrieval:
         
         if self.evaluation:
             posterior, bestfit_params = self.PMN_analyzer()
-            print(f' shape posterior = {posterior.shape}')
             
         else:
             # Read the parameters of the best-fitting model
@@ -230,11 +219,10 @@ class Retrieval:
         
         fig_label = 'final' if self.evaluation else f'{self.cb_count}'
 
-        fig = plt.figure(figsize=(posterior.shape[1], posterior.shape[1]))
+            
         fig = figs.simple_cornerplot(posterior,
                                 labels, 
-                                bestfit_params=bestfit_params,
-                                fig=fig,)
+                                bestfit_params=bestfit_params)
         l, b, w, h = [0.32,3.42,0.65,0.20]
 
         ax_res_dim  = [l, b*(h+0.03), w, 0.97*h/5]
@@ -243,12 +231,12 @@ class Retrieval:
 
         ax_spec = fig.add_axes(ax_spec_dim)
         ax_res = fig.add_axes(ax_res_dim)
-        print(f' - Plotting bestfit model...')
+        
         ax_spec, ax_res = figs.fig_bestfit_model(
             self.d_spec, 
             self.m_spec,
             self.loglike,
-            Cov=None, # calculate the full covariance matrix is slow...
+            Cov=getattr(self, 'Cov', None),
             xlabel=r'Wavelength [nm]',
             ylabel=r'Flux [erg/s/cm$^2$/cm]',
             ax_spec=ax_spec,
@@ -283,11 +271,7 @@ class Retrieval:
         if hasattr(self.pRT_model, 'int_contr_em'):
             if np.sum(np.isnan(self.pRT_model.int_contr_em)) == 0:
                 print(f'Copying integrated contribution emission from pRT_atm to PT')
-                # print(f' shape int_contr_em = {self.pRT_model.int_contr_em.shape}')
-                # self.pRT_model.PT.int_contr_em = self.pRT_model.int_contr_em
-                setattr(self.pRT_model.PT, 'int_contr_em', np.copy(self.pRT_model.int_contr_em))
-                
-        print(f' - Plotting PT profile...')
+                self.pRT_model.PT.int_contr_em = self.pRT_model.int_contr_em
         ax_PT = figs.fig_PT(
             PT=self.pRT_model.PT, 
             ax=ax_PT, 
@@ -303,8 +287,6 @@ class Retrieval:
         print(f' - Saved {self.run_dir / f"plots/retrieval_summary_{fig_label}.pdf"}')
             
         if self.evaluation:
-            print(f' - Evaluation figures...')
-            # self.full_cov_matrix()
                        
             figs.fig_bestfit_model(
                 self.d_spec, 
@@ -324,36 +306,60 @@ class Retrieval:
                     int_contr_em_color='red',
                     fig_name=self.run_dir / f'plots/retrieval_PT_profile_{fig_label}.pdf',
                     )
+
+    def Testing(self, 
+                    n_samples, 
+                    n_live, 
+                    n_params, 
+                    live_points, 
+                    posterior, 
+                    stats,
+                    max_ln_L, 
+                    ln_Z, 
+                    ln_Z_err, 
+                    nullcontext
+                    ):
+        
+        posterior, bestfit_params = self.PMN_analyzer()
+
+        self.parameters.add_sample(bestfit_params)
+        self.PMN_lnL_func()
+
+        if rank != 0:
+            return
+
+        # Evaluate the model with best-fitting parameters
+        self.parameters.add_sample(bestfit_params)
+        self.PMN_lnL_func()
+
+        # PT envelopes
+        temperature_samples = []
+        for sample in posterior:
+            self.parameters.add_sample(sample)
+            self.pRT_model.get_temperature(self.parameters.params)
+            temperature_samples.append(self.pRT_model.temperature)
+            
+        # Convert profiles to 1, 2, 3-sigma equivalent and median
+        q = [0.5-0.997/2, 0.5-0.95/2, 0.5-0.68/2, 0.5, 
+            0.5+0.68/2, 0.5+0.95/2, 0.5+0.997/2
+            ]  
+        self.pRT_model.PT.temperature_envelopes = quantiles(np.array(temperature_samples), q=q, axis=0)
+        
+        if hasattr(self.pRT_model, 'int_contr_em'):
+            if np.sum(np.isnan(self.pRT_model.int_contr_em)) == 0:
+                print(f'Copying integrated contribution emission from pRT_atm to PT')
+                self.pRT_model.PT.int_contr_em = self.pRT_model.int_contr_em
+
+        figs.fig_PT_phoenix(
+                PT=self.pRT_model.PT, 
+                # xlim=(x1,x2), 
+                fig_name=self.run_dir / f'plots/retrieval_PT_profile_phoenix.pdf',
+                )
             
     def prior_check(self):
         
         # Check the prior space 
         figs.fig_prior_check(self, fig_name=self.run_dir / 'plots/prior_check.pdf')
-        return self
-    
-    def full_cov_matrix(self):
-        
-        pickle_file = self.run_dir / 'Cov.pickle'
-        if pickle_file.exists():
-            print(f' - Loading full covariance matrix from {pickle_file}...')
-            with open(pickle_file, 'rb') as f:
-                self.Cov = pickle.load(f)
-                
-            return self
-        print(f' - Calculating full covariance matrix...')
-        # Calculate the full covariance matrix
-        for i in range(self.d_spec.n_orders):
-            for j in range(self.d_spec.n_dets):
-                if self.Cov[i,j] is not None:
-                    if not hasattr(self.Cov[i,j], 'diag'):
-                        self.Cov[i,j].diag = np.diag(self.Cov[i,j].get_dense_cov())
-                        delattr(self.Cov[i,j], 'cov')
-                        
-        # save as pickle
-        with open(pickle_file, 'wb') as f:
-            pickle.dump(self.Cov, f)
-            
-        print(f' - Saved full covariance matrix to {self.run_dir / "Cov.pickle"}')
         return self
         
         
