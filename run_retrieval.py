@@ -47,15 +47,16 @@ free_params = {
     # 'log_12CO': [(-4,-3), r'$\log\ \mathrm{^{12}CO}$'], 
     'log_13CO': [(-12,-2), r'$\log\ \mathrm{^{13}CO}$'], 
 
-    'log_H2O'  : ([-12, -2], r'$\log$(H$_2$O)'),
+    'log_H2O'  : ([-12, -2], r'$\log$ H$_2$O'),
     # 'log_H2O'  : ([-4, -3], r'$\log$(H$_2$O)'),
     # isotologue of water with 18O
     'log_H2O_181': ([-12, -2], r'$\log\ \mathrm{H_2^{18}O}$'),
-    'log_Na'   : ([-12, -2], r'$\log$\ Na'),
-    'log_HF'   : ([-12, -2], r'$\log$\ HF'),
-    'log_Ca'   : ([-12, -2], r'$\log$\ Ca'),
-    'log_Ti'   : ([-12, -2], r'$\log$\ Ti'),
-    'log_CN'   : ([-12, -2], r'$\log$\ CN'),
+    'log_Na'   : ([-12, -2], r'$\log$ Na'),
+    'log_HF'   : ([-12, -2], r'$\log$ HF'),
+    'log_Ca'   : ([-12, -2], r'$\log$ Ca'),
+    'log_Ti'   : ([-12, -2], r'$\log$ Ti'),
+    'log_CN'   : ([-12, -2], r'$\log$ CN'),
+    'log_OH'   : ([-12, -2], r'$\log$ OH'),
     # 'log_13CN' : ([-12, -2], r'$\log\ \mathrm{^{13}CN}$'),
     #'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
     #'log_Fe'   : ([-12, -2], r'$\log$(Fe)'),
@@ -170,6 +171,7 @@ if args.pre_processing:
             'Ca': 'Ca',
             'Ti': 'Ti',
             'CN': 'CN_high', # DGP (2024-04-15), new linelist up to 4000 K
+            'OH': 'OH_MoLLIST_main_iso', # DGP (2024-06-25), new linelist up to 4000 K
             # '13CN': 'CN_34_high',
             #'Mg': 'Mg',
             #'Fe': 'Fe',
