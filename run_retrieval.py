@@ -12,7 +12,7 @@ from atm_retrieval.utils import pickle_load, pickle_save
 import atm_retrieval.figures as figs
 
 
-run = 'testing_024'
+run = 'test_OH'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
