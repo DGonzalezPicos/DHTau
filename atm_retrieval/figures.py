@@ -659,10 +659,10 @@ def fig_prior_check(ret, fig_name='prior_check.pdf'):
                 ax[0].fill_between(wave, flux-err, flux+err, fc='k', alpha=0.2)
                 ax[1].fill_between(wave, -err, err, fc='k', alpha=0.2)
                 for i, theta_i in enumerate(theta):
-                    print(i,order,det)
-                    print(f)
-                    print(f[i][:,order,det])
-                    print()
+                    # print(i,order,det)
+                    # print(f)
+                    # print(f[i][:,order,det])
+                    # print()
                     m_spec = m[i][order,det]
                     ax[0].plot(wave, m_spec, c=colors[i], lw=lw, alpha=0.8)
                     

@@ -12,7 +12,7 @@ from atm_retrieval.utils import pickle_load, pickle_save
 import atm_retrieval.figures as figs
 
 
-run = 'testing_024'
+run = 'testing_026'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -36,8 +36,8 @@ free_params = {
 
     'log_g': [(2.0,5.0), r'$\log\ g$'], 
     # 'r_k'  : [(0.0, 3.0), r'$r_k$'], # veiling factor (0 for no veiling, can be > 1)
-    'r_0': [(0.0, 0.8), r'$r_0$'], # veiling amplitude (0 for no veiling, maximum 1 if flux is normalized to 1)
-    'alpha': [(0.0, 5.0), r'$\alpha$'], # veiling index (power-law), must be positive (increasing with wavelength)
+     'r_0': [(0.0, 0.8), r'$r_0$'], # veiling amplitude (0 for no veiling, maximum 1 if flux is normalized to 1)
+     'alpha': [(0.0, 5.0), r'$\alpha$'], # veiling index (power-law), must be positive (increasing with wavelength)
 
     'vsini' : ([2.0, 16.0], r'$v \sin(i)$ [km/s]'),
     # 'vsini' : ([5.2, 5.4], r'$v \sin(i)$ [km/s]'),
@@ -62,6 +62,8 @@ free_params = {
     #'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
     #'log_Fe'   : ([-12, -2], r'$\log$(Fe)'),
     #'log_Al'   : ([-12, -2], r'$\log$(Al)'),
+
+    'log_OH'    :([-12, -2], r'$\log$\ OH'),
     
     
     # temperature profile
@@ -84,7 +86,7 @@ free_params = {
     'dlog_P': [(-0.8, 0.8), r'$\log \Delta P$'], # log of the pressure shift for the PT knots (must be abs(dlog_P) < 1)
 }
 
-constant_params = {
+constant_params = { 
     'log_P_knots': [2, 1, 0, -1, -2, -3, -5], # [log(bar)]
     'R_p'    : 1.0,
     'distance': 133.3, # [pc] Gaia EDR3 parallactic distance from Bailer-Jones et al. (2021)
@@ -111,13 +113,13 @@ else:
 if args.pre_processing:
     print('--> Pre-processing...')
     
-    ## Load data
+    # Load data
     # DGP (2024-04-21) run retrieval on two nights
-    #file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
-      #           f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
+    file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
+                f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
     
     # run retrieval on one night (choose night 1 or 2)
-    file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
+    #file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
     
     assert isinstance(file_data, list), 'file_data must be a list of strings (even if it has only one element)'
     
@@ -176,6 +178,7 @@ if args.pre_processing:
             #'Mg': 'Mg',
             #'Fe': 'Fe',
             #'Al': 'Al'
+            'OH' : 'OH_main_iso',
         }
         pRT = pRT_model(line_species_dict=line_species_dict,
                         d_spec=d_spec,
