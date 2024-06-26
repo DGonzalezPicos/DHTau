@@ -12,7 +12,7 @@ from atm_retrieval.utils import pickle_load, pickle_save
 import atm_retrieval.figures as figs
 
 
-run = 'testing_026'
+run = 'testing_025'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -58,13 +58,13 @@ free_params = {
     'log_Ca'   : ([-12, -2], r'$\log$ Ca'),
     'log_Ti'   : ([-12, -2], r'$\log$ Ti'),
     'log_CN'   : ([-12, -2], r'$\log$ CN'),
-    'log_OH'   : ([-12, -2], r'$\log$ OH'),
+    #'log_OH'   : ([-12, -2], r'$\log$ OH'),
     # 'log_13CN' : ([-12, -2], r'$\log\ \mathrm{^{13}CN}$'),
     #'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
     #'log_Fe'   : ([-12, -2], r'$\log$(Fe)'),
     #'log_Al'   : ([-12, -2], r'$\log$(Al)'),
 
-    'log_OH'    :([-12, -2], r'$\log$\ OH'),
+    #'log_OH'    :([-12, -2], r'$\log$\ OH'),
     
     
     # temperature profile
@@ -180,7 +180,7 @@ if args.pre_processing:
             #'Mg': 'Mg',
             #'Fe': 'Fe',
             #'Al': 'Al'
-            'OH' : 'OH_main_iso',
+            #'OH' : 'OH_main_iso',
         }
         pRT = pRT_model(line_species_dict=line_species_dict,
                         d_spec=d_spec,
@@ -263,22 +263,39 @@ if args.evaluation:
 if args.test:
     print('--> Testing...')
 
-    # Load the retrieval object
-    d_spec = pickle_load(run_dir / 'd_spec.pickle')
-    pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT, run=run)
+    from atm_retrieval.utils import quantiles
+
+    posterior = np.load('posteriors.npy')
+
+    Q = np.array([quantiles(posterior[:,i], q=[0.16,0.5,0.84]) \
+                for i in range(posterior.shape[1])]
+                )
+        
+    ranges = np.array(
+            [(4*(q_i[0]-q_i[1])+q_i[1], 4*(q_i[2]-q_i[1])+q_i[1]) \
+                for q_i in Q]
+            )
+
+    print(Q)
+    print(ranges)
     
-    ret.evaluation = True
-    ret.Testing(
-            n_samples=None, 
-            n_live=None, 
-            n_params=None, 
-            live_points=None, 
-            posterior=None, 
-            stats=None,
-            max_ln_L=None, 
-            ln_Z=None, 
-            ln_Z_err=None, 
-            nullcontext=None
-    )
+
+    # # Load the retrieval object
+    # d_spec = pickle_load(run_dir / 'd_spec.pickle')
+    # pRT = pickle_load(run_dir / 'atm.pickle')
+    # ret = Retrieval(parameters, d_spec, pRT, run=run)
+    
+    # ret.evaluation = True
+    # ret.Testing(
+    #         n_samples=None, 
+    #         n_live=None, 
+    #         n_params=None, 
+    #         live_points=None, 
+    #         posterior=None, 
+    #         stats=None,
+    #         max_ln_L=None, 
+    #         ln_Z=None, 
+    #         ln_Z_err=None, 
+    #         nullcontext=None
+    # )
     

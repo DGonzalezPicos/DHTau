@@ -322,39 +322,60 @@ class Retrieval:
         
         posterior, bestfit_params = self.PMN_analyzer()
 
-        self.parameters.add_sample(bestfit_params)
-        self.PMN_lnL_func()
+        np.save('posteriors.npy', posterior)
 
-        if rank != 0:
-            return
+        # print(posterior)
+        # print(np.median(posterior[:,2]))
 
-        # Evaluate the model with best-fitting parameters
-        self.parameters.add_sample(bestfit_params)
-        self.PMN_lnL_func()
-
-        # PT envelopes
-        temperature_samples = []
-        for sample in posterior:
-            self.parameters.add_sample(sample)
-            self.pRT_model.get_temperature(self.parameters.params)
-            temperature_samples.append(self.pRT_model.temperature)
-            
-        # Convert profiles to 1, 2, 3-sigma equivalent and median
-        q = [0.5-0.997/2, 0.5-0.95/2, 0.5-0.68/2, 0.5, 
-            0.5+0.68/2, 0.5+0.95/2, 0.5+0.997/2
-            ]  
-        self.pRT_model.PT.temperature_envelopes = quantiles(np.array(temperature_samples), q=q, axis=0)
-        
-        if hasattr(self.pRT_model, 'int_contr_em'):
-            if np.sum(np.isnan(self.pRT_model.int_contr_em)) == 0:
-                print(f'Copying integrated contribution emission from pRT_atm to PT')
-                self.pRT_model.PT.int_contr_em = self.pRT_model.int_contr_em
-
-        figs.fig_PT_phoenix(
-                PT=self.pRT_model.PT, 
-                # xlim=(x1,x2), 
-                fig_name=self.run_dir / f'plots/retrieval_PT_profile_phoenix.pdf',
+        Q = np.array([quantiles(posterior[:,i], q=[0.16,0.5,0.84]) \
+                for i in range(posterior.shape[1])]
                 )
+        
+        ranges = np.array(
+            [(4*(q_i[0]-q_i[1])+q_i[1], 4*(q_i[2]-q_i[1])+q_i[1]) \
+                for q_i in Q]
+            )
+
+        print(Q)
+        print(ranges)
+    
+        print(bestfit_params)
+
+        # if rank != 0:
+        #     return
+
+        # # Evaluate the model with best-fitting parameters
+        # self.parameters.add_sample(bestfit_params)
+        # self.PMN_lnL_func()
+
+        # print(self.parameters.params)
+
+
+
+
+        # # PT envelopes
+        # temperature_samples = []
+        # for sample in posterior:
+        #     self.parameters.add_sample(sample)
+        #     self.pRT_model.get_temperature(self.parameters.params)
+        #     temperature_samples.append(self.pRT_model.temperature)
+            
+        # # Convert profiles to 1, 2, 3-sigma equivalent and median
+        # q = [0.5-0.997/2, 0.5-0.95/2, 0.5-0.68/2, 0.5, 
+        #     0.5+0.68/2, 0.5+0.95/2, 0.5+0.997/2
+        #     ]  
+        # self.pRT_model.PT.temperature_envelopes = quantiles(np.array(temperature_samples), q=q, axis=0)
+        
+        # if hasattr(self.pRT_model, 'int_contr_em'):
+        #     if np.sum(np.isnan(self.pRT_model.int_contr_em)) == 0:
+        #         print(f'Copying integrated contribution emission from pRT_atm to PT')
+        #         self.pRT_model.PT.int_contr_em = self.pRT_model.int_contr_em
+
+        # figs.fig_PT_phoenix(
+        #         PT=self.pRT_model.PT, 
+        #         # xlim=(x1,x2), 
+        #         fig_name=self.run_dir / f'plots/retrieval_PT_profile_phoenix.pdf',
+        #         )
             
     def prior_check(self):
         
