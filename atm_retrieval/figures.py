@@ -124,7 +124,7 @@ def fig_PT(PT,
             ax_twin = ax.twiny()
             ax_twin.plot(
                 PT.int_contr_em, p, 
-                c='red', lw=1, alpha=0.4,
+                c='black', lw=1, alpha=0.8, linestyle='dotted'
                 )
             # weigh_alpha(PT.int_contr_em, p, np.linspace(0,10000,p.size), ax, alpha_min=0.5, plot=True)
             # define photosphere as region where PT.int_contr_em > np.quantile(PT.int_contr_em, 0.9)
@@ -134,7 +134,7 @@ def fig_PT(PT,
             T_phot_err = np.std(PT.temperature_envelopes[3][photosphere])
             # print(f' - Photospheric temperature: {T_phot:.1f} +- {T_phot_err:.1f} K')
             # make empty marker
-            ax.scatter(T_phot, P_phot, c='red',
+            ax.scatter(T_phot, P_phot, c='black',
                         marker='o', 
                         s=50, 
                         alpha=0.5,
@@ -532,7 +532,7 @@ def fig_bestfit_model(d_spec,
                 M_ij = m_spec.flux[i,j,mask_ij][np.newaxis,:]
             
             model[~mask_ij] = np.nan
-            ax_spec.plot(x, model, lw=lw, label=label, color=bestfit_color)
+            ax_spec.plot(x, model, lw=2*lw, label=label, color=bestfit_color)
             N_veiling = getattr(m_spec, 'N_veiling', 0)
             if N_veiling > 0:
                 # build linear model with veiling components
@@ -583,6 +583,9 @@ def fig_bestfit_model(d_spec,
     # Set the labels for the final axis
     ax_spec.set(ylabel=ylabel_spec)
     ax_res.set(xlabel=xlabel, ylabel='Res.')
+
+    #Plot only CO line order
+    # ax_spec.set_xlim(2300,2400)
 
     if fig_name is not None:
         plt.savefig(fig_name)

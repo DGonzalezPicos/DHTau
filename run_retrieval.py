@@ -12,7 +12,7 @@ from atm_retrieval.utils import pickle_load, pickle_save
 import atm_retrieval.figures as figs
 
 
-run = 'testing_025'
+run = 'testing_029'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -58,7 +58,7 @@ free_params = {
     'log_Ca'   : ([-12, -2], r'$\log$ Ca'),
     'log_Ti'   : ([-12, -2], r'$\log$ Ti'),
     'log_CN'   : ([-12, -2], r'$\log$ CN'),
-    #'log_OH'   : ([-12, -2], r'$\log$ OH'),
+    'log_OH'   : ([-12, -2], r'$\log$ OH'),
     # 'log_13CN' : ([-12, -2], r'$\log\ \mathrm{^{13}CN}$'),
     #'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
     #'log_Fe'   : ([-12, -2], r'$\log$(Fe)'),
@@ -187,11 +187,11 @@ if args.pre_processing:
                         mode='lbl',
                         # WARNING: setting `lbl_opacity_sampling = 10` underestimates vsini
                         # and can lead to wrong log_g and PT profiles
-                        lbl_opacity_sampling=5, # set to 5 for speed, 3 for accuracy
+                        lbl_opacity_sampling=3, # set to 5 for speed, 3 for accuracy
                         rayleigh_species=['H2', 'He'],
                         continuum_opacities=['H2-H2', 'H2-He' ], #, 'H-'],
                         log_P_range=(-5,2),
-                        n_atm_layers=30, # set to 20 for speed, 30 for accuracy
+                        n_atm_layers=50, # set to 20 for speed, 30 for accuracy
                         rv_range=(-50,50))
         
 
@@ -265,7 +265,8 @@ if args.test:
 
     from atm_retrieval.utils import quantiles
 
-    posterior = np.load('posteriors.npy')
+    posterior = np.load(run_dir / 'posteriors.npy')
+    # labels = np.load(run_dir / 'labels.npy')
 
     Q = np.array([quantiles(posterior[:,i], q=[0.16,0.5,0.84]) \
                 for i in range(posterior.shape[1])]
@@ -276,8 +277,40 @@ if args.test:
                 for q_i in Q]
             )
 
-    print(Q)
-    print(ranges)
+    err = np.array(
+            [((q_i[0]-q_i[1]), (q_i[2]-q_i[1])) \
+                for q_i in Q]
+            )
+
+    # Calculating the 12CO/13CO ratio
+    C_ratio = Q[7,1]/Q[8,1]
+    C_ratio_lower_err = -C_ratio*np.sqrt((err[7,0]/Q[7,1])**2+(err[8,0]/Q[8,1])**2)
+    C_ratio_upper_err = C_ratio*np.sqrt((err[7,1]/Q[7,1])**2+(err[8,1]/Q[8,1])**2)
+
+    #calculating the C/O ratio
+    if 'log_OH' in parameters.param_keys:
+        print('Ratios including OH')
+        CO_ratio = (Q[7,1]+Q[8,1]+Q[15,1])/(Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1]+Q[16,1])
+        CO_ratio_lower_err = -CO_ratio*np.sqrt(((err[7,0]+err[8,0]+err[15,0])/(Q[7,1]+Q[8,1]+Q[15,1]))**2
+                                       +((err[9,0]+err[10,0]+err[7,0]+err[8,0]+err[16,0])/
+                                            (Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1]+Q[16,1]))**2)
+        CO_ratio_upper_err = CO_ratio*np.sqrt(((err[7,1]+err[8,1]+err[15,1])/(Q[7,1]+Q[8,1]+Q[15,1]))**2
+                                       +((err[9,1]+err[10,1]+err[7,1]+err[8,1]+err[16,1])/
+                                            (Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1]+Q[16,1]))**2)
+    else: 
+        print('Ratios excluding OH')
+        CO_ratio = (Q[7,1]+Q[8,1]+Q[15,1])/(Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1])
+        CO_ratio_lower_err = -CO_ratio*np.sqrt(((err[7,0]+err[8,0]+err[15,0])/(Q[7,1]+Q[8,1]+Q[15,1]))**2
+                                       +((err[9,0]+err[10,0]+err[7,0]+err[8,0])/
+                                            (Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1]))**2)
+        CO_ratio_upper_err = CO_ratio*np.sqrt(((err[7,1]+err[8,1]+err[15,1])/(Q[7,1]+Q[8,1]+Q[15,1]))**2
+                                       +((err[9,1]+err[10,1]+err[7,1]+err[8,1])/
+                                            (Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1]))**2)
+
+    print(f'The 12CO/13CO ratio is {C_ratio} with lower error {C_ratio_lower_err} and upper error {C_ratio_upper_err}')
+    print(f'The C/O ratio is {CO_ratio} with lower error {CO_ratio_lower_err} and upper error {CO_ratio_upper_err}')
+    
+
     
 
     # # Load the retrieval object
