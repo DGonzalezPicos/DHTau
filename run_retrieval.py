@@ -36,8 +36,8 @@ free_params = {
 
     'log_g': [(2.0,5.0), r'$\log\ g$'], 
     # 'r_k'  : [(0.0, 3.0), r'$r_k$'], # veiling factor (0 for no veiling, can be > 1)
-     'r_0': [(0.0, 0.8), r'$r_0$'], # veiling amplitude (0 for no veiling, maximum 1 if flux is normalized to 1)
-     'alpha': [(0.0, 5.0), r'$\alpha$'], # veiling index (power-law), must be positive (increasing with wavelength)
+    'r_0': [(0.0, 0.9), r'$r_0$'], # veiling amplitude (0 for no veiling, maximum 1 if flux is normalized to 1)
+    'alpha': [(0.0, 5.0), r'$\alpha$'], # veiling index (power-law), must be positive (increasing with wavelength)
 
     'vsini' : ([2.0, 16.0], r'$v \sin(i)$ [km/s]'),
     # 'vsini' : ([5.2, 5.4], r'$v \sin(i)$ [km/s]'),

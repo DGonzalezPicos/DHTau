@@ -116,16 +116,23 @@ class Retrieval:
             # normalize the model spectrum in the same way as the data
             self.m_spec.normalize_flux_per_order(**self.d_spec.normalize_args)
             
-        if self.apply_veiling:
-            # print(f' - Applying veiling with r_k = {self.parameters.params["r_k"]}')
-            self.m_spec.veiling(self.parameters.params['r_k'], replace_flux=True)
+        # if self.apply_veiling:
+        #     # print(f' - Applying veiling with r_k = {self.parameters.params["r_k"]}')
+        #     self.m_spec.veiling(self.parameters.params['r_k'], replace_flux=True)
             
-            
+        # DGP (2024-07-01): the block below was missing in the current version
+        # assert 'r_0' in self.parameters.params.keys(), '`r_0` must be a free parameter to include veiling'
+        if "r_0" in self.parameters.params.keys(): # veiling with power-law model (NEW: 2024-05-28), reintroduced 2024-07-01
+            self.m_spec.add_veiling_power_law(self.parameters.params["r_0"],
+                                            self.parameters.params.get("alpha", 0.0), # 0.0 = constant
+                                            self.d_spec.wave,
+                                            np.nanmin(self.d_spec.wave))
+    
         # generate spline model for flux decomposition
         self.m_spec.N_knots = self.parameters.params.get('N_knots', 1) # 1 for no spline decomposition
         self.m_spec.N_veiling = self.parameters.params.get('N_veiling', 0) # 0 for no veiling
-        if self.m_spec.N_veiling > 0:
-            self.m_spec.add_veiling(self.m_spec.N_veiling)
+        # if self.m_spec.N_veiling > 0:
+        #     self.m_spec.add_veiling(self.m_spec.N_veiling)
         
         if 'log_a' in self.parameters.params.keys():
             self.update_Cov(self.parameters.params) # DGP (2024-04-26): create the GP kernel...
