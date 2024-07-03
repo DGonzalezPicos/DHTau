@@ -6,11 +6,13 @@ def pickle_save(file, object_to_pickle):
 
     with open(file, 'wb') as f:
         pickle.dump(object_to_pickle, f)
+    print(f'[INFO] Pickled object saved to {file}')
         
 def pickle_load(file):
     
     with open(file, 'rb') as f:
         pickled_object = pickle.load(f)
+    print(f'[INFO] Pickled object loaded from {file}')
 
     return pickled_object
 

@@ -229,10 +229,12 @@ class Retrieval:
         
         fig_label = 'final' if self.evaluation else f'{self.cb_count}'
 
-            
+        fig = plt.figure(figsize=(22,24))
         fig = figs.simple_cornerplot(posterior,
                                 labels, 
-                                bestfit_params=bestfit_params)
+                                bestfit_params=bestfit_params,
+                                fig=fig,
+        )
         
         l, b, w, h = [0.32,3.42,0.65,0.20]
 
@@ -278,11 +280,13 @@ class Retrieval:
             0.5+0.68/2, 0.5+0.95/2, 0.5+0.997/2
             ]  
         self.pRT_model.PT.temperature_envelopes = quantiles(np.array(temperature_samples), q=q, axis=0)
+        del temperature_samples
         
         if hasattr(self.pRT_model, 'int_contr_em'):
             if np.sum(np.isnan(self.pRT_model.int_contr_em)) == 0:
                 print(f'Copying integrated contribution emission from pRT_atm to PT')
-                self.pRT_model.PT.int_contr_em = self.pRT_model.int_contr_em
+                self.pRT_model.PT.int_contr_em = np.copy(self.pRT_model.int_contr_em)
+                delattr(self.pRT_model, 'int_contr_em')
         ax_PT = figs.fig_PT(
             PT=self.pRT_model.PT, 
             ax=ax_PT, 
@@ -296,6 +300,7 @@ class Retrieval:
         
         fig.savefig(self.run_dir / f'plots/retrieval_summary_{fig_label}.pdf')
         print(f' - Saved {self.run_dir / f"plots/retrieval_summary_{fig_label}.pdf"}')
+        plt.close(fig)
             
         if self.evaluation:
 

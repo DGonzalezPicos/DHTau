@@ -102,7 +102,7 @@ class pRT_model:
         self.params = params
         
         self.int_contr_em  = np.zeros_like(self.pressure)
-        self.int_contr_em_per_order = np.zeros((self.d_wave.shape[0], len(self.pressure)))
+        # self.int_contr_em_per_order = np.zeros((self.d_wave.shape[0], len(self.pressure)))
 
 
         # Generate a model spectrum
@@ -303,13 +303,18 @@ class pRT_model:
                 )
             # Compute the spectrally-weighted emission contribution function
             # Integrate and weigh the emission contribution function
-            self.int_contr_em_per_order[order,j] = \
-                contr_em_ij.spectrally_weighted_integration(
+            # self.int_contr_em_per_order[order,j] = \
+            #     contr_em_ij.spectrally_weighted_integration(
+            #         wave=d_wave_i[d_mask_i].flatten(), 
+            #         flux=m_spec_i.flux[d_mask_i].flatten(), 
+            #         array=contr_em_ij.flux[d_mask_i].flatten(), 
+            #         )
+            # self.int_contr_em[j] += self.int_contr_em_per_order[order,j]
+            self.int_contr_em[j] += contr_em_ij.spectrally_weighted_integration(
                     wave=d_wave_i[d_mask_i].flatten(), 
                     flux=m_spec_i.flux[d_mask_i].flatten(), 
                     array=contr_em_ij.flux[d_mask_i].flatten(), 
                     )
-            self.int_contr_em[j] += self.int_contr_em_per_order[order,j]
         
         
     def pickle_save(self, file):
