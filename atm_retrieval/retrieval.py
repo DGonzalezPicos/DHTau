@@ -308,42 +308,6 @@ class Retrieval:
             # labels = np.array(list(self.parameters.param_mathtext.values()))
             # np.save(self.run_dir / 'labels.npy', labels)
                        
-            figs.fig_bestfit_model(
-                self.d_spec, 
-                self.m_spec,
-                self.loglike,
-                Cov=getattr(self, 'Cov', None),
-                xlabel=r'Wavelength [nm]',
-                ylabel=r'Flux [erg/s/cm$^2$/cm]',
-                bestfit_color=self.bestfit_color,
-                fig_name=self.run_dir / f'plots/retrieval_bestfit_model_{fig_label}.pdf',
-                )
-            figs.fig_PT(
-                    PT=self.pRT_model.PT, 
-                    # xlim=(x1,x2), 
-                    bestfit_color=self.bestfit_color,
-                    envelopes_color=self.bestfit_color,
-                    int_contr_em_color='red',
-                    fig_name=self.run_dir / f'plots/retrieval_PT_profile_{fig_label}.pdf',
-                    )
-            
-            # l, b, w, h = [0.32,3.42,0.65,0.20]
-            # ax_res_dim  = [l, b*(h+0.03), w, 0.97*h/5]
-            # ax_spec_dim = [l, ax_res_dim[1]+ax_res_dim[3], w, 4*0.97*h/5]
-
-            # is_new_fig = False
-            # n_orders = self.d_spec.n_orders
-
-            # fig, ax = plt.figure(
-            #     # figsize=(10,2.5*n_orders*2),# nrows=n_orders*3, 
-            #     # gridspec_kw={'hspace':0, 'height_ratios':[1,1/3,1/5]*n_orders, 
-            #     #         'left':0.1, 'right':0.95, 
-            #     #         'top':(1-0.02*7/(n_orders*3)), 
-            #     #         'bottom':0.035*7/(n_orders*3), 
-            #     #         }
-            #     )
-
-
             # figs.fig_bestfit_model(
             #     self.d_spec, 
             #     self.m_spec,
@@ -351,11 +315,47 @@ class Retrieval:
             #     Cov=getattr(self, 'Cov', None),
             #     xlabel=r'Wavelength [nm]',
             #     ylabel=r'Flux [erg/s/cm$^2$/cm]',
-            #     ax_spec=ax_spec,
-            #     ax_res=ax_res,
             #     bestfit_color=self.bestfit_color,
-            #     fig_name=self.run_dir / f'plots/retrieval_bestfit_spec.pdf',
+            #     fig_name=self.run_dir / f'plots/retrieval_bestfit_model_{fig_label}.pdf',
             #     )
+            # figs.fig_PT(
+            #         PT=self.pRT_model.PT, 
+            #         # xlim=(x1,x2), 
+            #         bestfit_color=self.bestfit_color,
+            #         envelopes_color=self.bestfit_color,
+            #         int_contr_em_color='red',
+            #         fig_name=self.run_dir / f'plots/retrieval_PT_profile_{fig_label}.pdf',
+            #         )
+            
+            l, b, w, h = [0.32,3.42,0.65,0.20]
+            ax_res_dim  = [l, b*(h+0.03), w, 0.97*h/5]
+            ax_spec_dim = [l, ax_res_dim[1]+ax_res_dim[3], w, 4*0.97*h/5]
+
+            is_new_fig = False
+            n_orders = self.d_spec.n_orders
+
+            fig, ax = plt.figure(
+                # figsize=(10,2.5*n_orders*2),# nrows=n_orders*3, 
+                # gridspec_kw={'hspace':0, 'height_ratios':[1,1/3,1/5]*n_orders, 
+                #         'left':0.1, 'right':0.95, 
+                #         'top':(1-0.02*7/(n_orders*3)), 
+                #         'bottom':0.035*7/(n_orders*3), 
+                #         }
+                )
+
+
+            figs.fig_bestfit_model(
+                self.d_spec, 
+                self.m_spec,
+                self.loglike,
+                Cov=getattr(self, 'Cov', None),
+                xlabel=r'Wavelength [nm]',
+                ylabel=r'Flux [erg/s/cm$^2$/cm]',
+                ax_spec=ax_spec,
+                ax_res=ax_res,
+                bestfit_color=self.bestfit_color,
+                fig_name=self.run_dir / f'plots/retrieval_bestfit_spec.pdf',
+                )
 
     def Testing(self, 
                     n_samples, 

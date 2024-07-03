@@ -25,12 +25,12 @@ ret = Retrieval(parameters, d_spec, pRT, run=run)
 posterior, bestfit_params = ret.PMN_analyzer()
 keys = ret.parameters.param_priors.keys()
 bestfit_params_dict = dict(zip(keys, bestfit_params))
-print(bestfit_params_dict)
+# print(bestfit_params_dict)
 
-print()
-CO_ratio = np.exp(bestfit_params_dict['log_12CO'])/np.exp(bestfit_params_dict['log_13CO'])
-print(CO_ratio)
-print()
+# print()
+# CO_ratio = np.exp(bestfit_params_dict['log_12CO'])/np.exp(bestfit_params_dict['log_13CO'])
+# print(CO_ratio)
+# print()
 
 
 
@@ -52,10 +52,6 @@ else:
 ret.parameters.add_sample(list(params_dict.values()))
 ret.PMN_lnL_func()
 m_spec_1 = ret.m_spec
-
-
-## PLotting
-out_fig = run_dir / f'plots/species_contribution_{species}.pdf'
 
 n_orders, n_dets = d_spec.flux.shape[:2]
 
@@ -96,13 +92,72 @@ def plot_order_det(order, det, species, m_spec_0, m_spec_1, d_spec, out_fig):
     ax[-1].set(xlabel='Wavelength [nm]', ylabel='Residuals')
     ax[0].legend()
     return None
-with PdfPages(out_fig) as pdf:
+
+def plot_spec_order_det(order, det, species, m_spec, d_spec, out_fig):
+
+    # print(d_spec.wave[order, 0])
+    # print(d_spec.wave[order, :])
+
+    if det == ':':
+        wave = d_spec.wave[order, :].flatten()
+        m_0 = (m_spec.flux[order, :] / np.nanmean(m_spec.flux[order, :])).flatten()
+        # m_1 = m_spec_1.flux[order, det] / np.nanmean(m_spec_1.flux[order, det])
+        d  = (d_spec.flux[order, :] / np.nanmean(d_spec.flux[order, :])).flatten()
+    else:
+        wave = d_spec.wave[order, det]
+        m_0 = m_spec.flux[order, det] / np.nanmean(m_spec.flux[order, det])
+        # m_1 = m_spec_1.flux[order, det] / np.nanmean(m_spec_1.flux[order, det])
+        d  = d_spec.flux[order, det] / np.nanmean(d_spec.flux[order, det])
+
+    fig, ax = plt.subplots(2, 1, figsize=(14, 6),
+                        sharex=True,
+                        gridspec_kw={'left': 0.05, 
+                                        'right': 0.98,
+                                        'top': 0.97,
+                                        'bottom': 0.1, 
+                                        'hspace': 0.1,})
+
+    # top panel: data and model
+    ax[0].plot(wave, d, label='data', color='k', alpha=0.9, lw=2)
+    ax[0].plot(wave, m_0, label='model', color='g', alpha=0.7, lw=2)
+    ax[-1].plot(wave, d - m_0, label='data - model', color='g', alpha=0.7, lw=2)
+
+
+    # if np.allclose(m_0, m_1, rtol=1e-2):
+    #     # print('Model without species is equal to model with species')
+    #     return None
+    # ax[0].plot(wave, m_1, label=f'model without {species}', color='b', alpha=0.7, lw=2)
+
+    # # middle panel: model of species only
+    # ax[1].plot(wave, m_0 - m_1, label=f'{species}', color='r', alpha=0.9, lw=2)
+    # ax[1].legend()
+
+    # bottom panel: residuals
+    # ax[-1].plot(wave, d - m_0, label=f'data - model', color='b', alpha=0.7, lw=2)
+    ax[-1].axhline(0, color='k', ls='-', alpha=0.7)
+
+    ax[0].set_ylabel('Normalized flux')
+    ax[-1].set(xlabel='Wavelength [nm]', ylabel='Residuals')
+    ax[0].legend()
+    return None
+
+
+# out_fig = run_dir / f'plots/species_contribution_{species}.pdf'
+out_fig = run_dir / f'plots/bestfit_spec_order_det.pdf'
+
+with PdfPages(out_fig) as pdf:\
+
+    plot_spec_order_det(4, ':', species, m_spec_0, d_spec, out_fig)
+    pdf.savefig()
+    plt.close()
     
-    for i in range(n_orders):
-        for j in range(n_dets):
-            plot_order_det(i, j, species, m_spec_0, m_spec_1, d_spec, out_fig)
-            pdf.savefig()
-            plt.close()
+    # for i in range(n_orders):
+    #     for j in range(n_dets):
+    #         plot_spec_order_det(i, j, species, m_spec_0, d_spec, out_fig)
+    #         pdf.savefig()
+    #         plt.close()
+
+
 
 
 print(f'Plots saved to {out_fig}')
