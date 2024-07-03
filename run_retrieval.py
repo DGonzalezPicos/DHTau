@@ -12,7 +12,7 @@ from atm_retrieval.utils import pickle_load, pickle_save
 import atm_retrieval.figures as figs
 
 
-run = 'test_OH'
+run = 'testing_029'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -63,6 +63,8 @@ free_params = {
     #'log_Mg'   : ([-12, -2], r'$\log$(Mg)'),
     #'log_Fe'   : ([-12, -2], r'$\log$(Fe)'),
     #'log_Al'   : ([-12, -2], r'$\log$(Al)'),
+
+    #'log_OH'    :([-12, -2], r'$\log$\ OH'),
     
     
     # temperature profile
@@ -85,7 +87,7 @@ free_params = {
     'dlog_P': [(-0.8, 0.8), r'$\log \Delta P$'], # log of the pressure shift for the PT knots (must be abs(dlog_P) < 1)
 }
 
-constant_params = {
+constant_params = { 
     'log_P_knots': [2, 1, 0, -1, -2, -3, -5], # [log(bar)]
     'R_p'    : 1.0,
     'distance': 133.3, # [pc] Gaia EDR3 parallactic distance from Bailer-Jones et al. (2021)
@@ -112,13 +114,13 @@ else:
 if args.pre_processing:
     print('--> Pre-processing...')
     
-    ## Load data
+    # Load data
     # DGP (2024-04-21) run retrieval on two nights
-    #file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
-      #           f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
+    file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night1.dat',
+                f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
     
     # run retrieval on one night (choose night 1 or 2)
-    file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
+    #file_data = [f'data/VDHTauA+Bcenter_PRIMARY_CRIRES_SPEC1D_night2.dat']
     
     assert isinstance(file_data, list), 'file_data must be a list of strings (even if it has only one element)'
     
@@ -178,17 +180,18 @@ if args.pre_processing:
             #'Mg': 'Mg',
             #'Fe': 'Fe',
             #'Al': 'Al'
+            #'OH' : 'OH_main_iso',
         }
         pRT = pRT_model(line_species_dict=line_species_dict,
                         d_spec=d_spec,
                         mode='lbl',
                         # WARNING: setting `lbl_opacity_sampling = 10` underestimates vsini
                         # and can lead to wrong log_g and PT profiles
-                        lbl_opacity_sampling=5, # set to 5 for speed, 3 for accuracy
+                        lbl_opacity_sampling=3, # set to 5 for speed, 3 for accuracy
                         rayleigh_species=['H2', 'He'],
                         continuum_opacities=['H2-H2', 'H2-He' ], #, 'H-'],
                         log_P_range=(-5,2),
-                        n_atm_layers=30, # set to 20 for speed, 30 for accuracy
+                        n_atm_layers=50, # set to 20 for speed, 30 for accuracy
                         rv_range=(-50,50))
         
 
@@ -260,22 +263,72 @@ if args.evaluation:
 if args.test:
     print('--> Testing...')
 
-    # Load the retrieval object
-    d_spec = pickle_load(run_dir / 'd_spec.pickle')
-    pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT, run=run)
+    from atm_retrieval.utils import quantiles
+
+    posterior = np.load(run_dir / 'posteriors.npy')
+    # labels = np.load(run_dir / 'labels.npy')
+
+    Q = np.array([quantiles(posterior[:,i], q=[0.16,0.5,0.84]) \
+                for i in range(posterior.shape[1])]
+                )
+        
+    ranges = np.array(
+            [(4*(q_i[0]-q_i[1])+q_i[1], 4*(q_i[2]-q_i[1])+q_i[1]) \
+                for q_i in Q]
+            )
+
+    err = np.array(
+            [((q_i[0]-q_i[1]), (q_i[2]-q_i[1])) \
+                for q_i in Q]
+            )
+
+    # Calculating the 12CO/13CO ratio
+    C_ratio = Q[7,1]/Q[8,1]
+    C_ratio_lower_err = -C_ratio*np.sqrt((err[7,0]/Q[7,1])**2+(err[8,0]/Q[8,1])**2)
+    C_ratio_upper_err = C_ratio*np.sqrt((err[7,1]/Q[7,1])**2+(err[8,1]/Q[8,1])**2)
+
+    #calculating the C/O ratio
+    if 'log_OH' in parameters.param_keys:
+        print('Ratios including OH')
+        CO_ratio = (Q[7,1]+Q[8,1]+Q[15,1])/(Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1]+Q[16,1])
+        CO_ratio_lower_err = -CO_ratio*np.sqrt(((err[7,0]+err[8,0]+err[15,0])/(Q[7,1]+Q[8,1]+Q[15,1]))**2
+                                       +((err[9,0]+err[10,0]+err[7,0]+err[8,0]+err[16,0])/
+                                            (Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1]+Q[16,1]))**2)
+        CO_ratio_upper_err = CO_ratio*np.sqrt(((err[7,1]+err[8,1]+err[15,1])/(Q[7,1]+Q[8,1]+Q[15,1]))**2
+                                       +((err[9,1]+err[10,1]+err[7,1]+err[8,1]+err[16,1])/
+                                            (Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1]+Q[16,1]))**2)
+    else: 
+        print('Ratios excluding OH')
+        CO_ratio = (Q[7,1]+Q[8,1]+Q[15,1])/(Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1])
+        CO_ratio_lower_err = -CO_ratio*np.sqrt(((err[7,0]+err[8,0]+err[15,0])/(Q[7,1]+Q[8,1]+Q[15,1]))**2
+                                       +((err[9,0]+err[10,0]+err[7,0]+err[8,0])/
+                                            (Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1]))**2)
+        CO_ratio_upper_err = CO_ratio*np.sqrt(((err[7,1]+err[8,1]+err[15,1])/(Q[7,1]+Q[8,1]+Q[15,1]))**2
+                                       +((err[9,1]+err[10,1]+err[7,1]+err[8,1])/
+                                            (Q[9,1]+Q[10,1]+Q[7,1]+Q[8,1]))**2)
+
+    print(f'The 12CO/13CO ratio is {C_ratio} with lower error {C_ratio_lower_err} and upper error {C_ratio_upper_err}')
+    print(f'The C/O ratio is {CO_ratio} with lower error {CO_ratio_lower_err} and upper error {CO_ratio_upper_err}')
     
-    ret.evaluation = True
-    ret.Testing(
-            n_samples=None, 
-            n_live=None, 
-            n_params=None, 
-            live_points=None, 
-            posterior=None, 
-            stats=None,
-            max_ln_L=None, 
-            ln_Z=None, 
-            ln_Z_err=None, 
-            nullcontext=None
-    )
+
+    
+
+    # # Load the retrieval object
+    # d_spec = pickle_load(run_dir / 'd_spec.pickle')
+    # pRT = pickle_load(run_dir / 'atm.pickle')
+    # ret = Retrieval(parameters, d_spec, pRT, run=run)
+    
+    # ret.evaluation = True
+    # ret.Testing(
+    #         n_samples=None, 
+    #         n_live=None, 
+    #         n_params=None, 
+    #         live_points=None, 
+    #         posterior=None, 
+    #         stats=None,
+    #         max_ln_L=None, 
+    #         ln_Z=None, 
+    #         ln_Z_err=None, 
+    #         nullcontext=None
+    # )
     
