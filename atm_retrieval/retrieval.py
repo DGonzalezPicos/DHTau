@@ -224,6 +224,7 @@ class Retrieval:
         # Evaluate the model with best-fitting parameters
         self.parameters.add_sample(bestfit_params)
         self.PMN_lnL_func()
+        #
 
         labels = np.array(list(self.parameters.param_mathtext.values()))
         
@@ -334,14 +335,14 @@ class Retrieval:
             is_new_fig = False
             n_orders = self.d_spec.n_orders
 
-            fig, ax = plt.figure(
-                # figsize=(10,2.5*n_orders*2),# nrows=n_orders*3, 
-                # gridspec_kw={'hspace':0, 'height_ratios':[1,1/3,1/5]*n_orders, 
-                #         'left':0.1, 'right':0.95, 
-                #         'top':(1-0.02*7/(n_orders*3)), 
-                #         'bottom':0.035*7/(n_orders*3), 
-                #         }
-                )
+            # fig, ax = plt.figure(
+            #     figsize=(10,2.5*n_orders*2),# nrows=n_orders*3, 
+            #     gridspec_kw={'hspace':0, 'height_ratios':[1,1/3,1/5]*n_orders, 
+            #             'left':0.1, 'right':0.95, 
+            #             'top':(1-0.02*7/(n_orders*3)), 
+            #             'bottom':0.035*7/(n_orders*3), 
+            #             }
+                # )
 
 
             figs.fig_bestfit_model(
@@ -351,10 +352,11 @@ class Retrieval:
                 Cov=getattr(self, 'Cov', None),
                 xlabel=r'Wavelength [nm]',
                 ylabel=r'Flux [erg/s/cm$^2$/cm]',
-                ax_spec=ax_spec,
-                ax_res=ax_res,
+                ax_spec=None,
+                ax_res=None,
                 bestfit_color=self.bestfit_color,
                 fig_name=self.run_dir / f'plots/retrieval_bestfit_spec.pdf',
+                evaluation=True,
                 )
 
     def Testing(self, 

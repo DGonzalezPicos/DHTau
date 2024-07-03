@@ -139,7 +139,9 @@ def fig_PT(PT,
                         s=50, 
                         alpha=0.5,
                         zorder=10,
-                        label=f'T$_\mathrm{{phot}}$ = {T_phot:.0f} $\pm$ {T_phot_err:.0f} K')
+                        # label=f'T$_\mathrm{{phot}}$ = {T_phot:.0f} $\pm$ {T_phot_err:.0f} K')
+                        label=f'{T_phot:.0f} $\pm$ {T_phot_err:.0f} K',
+                        )
             
             
             # remove xticks
@@ -174,7 +176,7 @@ def fig_PT(PT,
             ylim=(p.max(), p.min()), yscale='log',
             xlim=xlim,
             )
-    #ax.legend(loc='upper right', fontsize=12)
+    ax.legend(loc='upper right', fontsize=18, frameon=False)
     
     if fig_name is not None:
         fig.savefig(fig_name)
@@ -352,7 +354,7 @@ def simple_cornerplot(posterior,
                 for q_i in Q]
             )
         
-        fontsize = 12
+        fontsize = 14
         color = 'green'
         smooth = 1.0
         # plot cornerplot
@@ -382,6 +384,28 @@ def simple_cornerplot(posterior,
                             )
         if bestfit_params is not None:
             corner.overplot_lines(fig, bestfit_params, color='green', lw=0.5)
+            
+        # Reshape the axes to a square matrix
+        ax = np.array(fig.axes)
+        for ax_i in ax:
+            ax_i.tick_params(axis='both', direction='inout')
+
+        ax = ax.reshape((int(np.sqrt(len(ax))), 
+                         int(np.sqrt(len(ax))))
+                        )
+        # rewrite titles to span two rows
+        # collect all titles
+        titles = [axi.title.get_text() for axi in fig.axes]
+        for i, title in enumerate(titles):
+            if len(title) > 30:
+                title_split = title.split('=')
+                titles[i] = title_split[0] + '\n ' + title_split[1]
+            fig.axes[i].title.set_text(titles[i])
+        # hide solid line from top axis of diagonal axes
+        for i in range(ax.shape[0]):
+            ax[i,i].spines['top'].set_visible(False)
+            ax[i,i].spines['right'].set_visible(False)
+            
         if fig_name is not None:
             fig.savefig(fig_name)
             print(f' - Saved {fig_name}')
@@ -399,6 +423,7 @@ def fig_bestfit_model(d_spec,
                       ax_res=None,
                       flux_factor=1.0,
                       fig_name=None,
+                      evaluation=False,
                       **kwargs):
     
     if (ax_spec is None) and (ax_res is None):
@@ -500,15 +525,17 @@ def fig_bestfit_model(d_spec,
                 fc='k', alpha=0.4, ec='none',
                 )
 
-            if hasattr(LogLike, 'chi_squared_red'):
+            if hasattr(LogLike, 'chi_squared_reduced'):
                 label = 'Best-fit model ' + \
                         r'$(\chi^2_\mathrm{red}$$=' + \
-                        '{:.2f}'.format(LogLike.chi_squared_red) + \
+                        '{:.2f}'.format(LogLike.chi_squared_reduced) + \
                         r')$'
             else:
                 label = 'Best-fit model'
                     
             f = LogLike.f[:,i,j]
+            if evaluation:
+                print(f' - beta ({i},{j}) = {LogLike.beta[i,j]:.1f}')
             
             # M = LogLike.M[i,j]
             # linear_model = M * f[:,None] * flux_factor
@@ -576,8 +603,9 @@ def fig_bestfit_model(d_spec,
 
             if i==0 and j==0:
                 ax_spec.legend(
-                    loc='upper right', ncol=2, fontsize=8, handlelength=1, 
-                    framealpha=0.7, handletextpad=0.3, columnspacing=0.8
+                    loc='upper right', ncol=3, fontsize=11, handlelength=1, 
+                    framealpha=0.7, handletextpad=0.3, columnspacing=0.8,
+                    frameon=False,
                     )
 
     # Set the labels for the final axis
@@ -590,7 +618,7 @@ def fig_bestfit_model(d_spec,
     if fig_name is not None:
         plt.savefig(fig_name)
         print(f' - Saved {fig_name}')
-        plt.close(fig)
+        # plt.close()
         
     # else:
     return ax_spec, ax_res
