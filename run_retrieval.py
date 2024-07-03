@@ -200,14 +200,17 @@ if args.pre_processing:
         pRT.pickle_save(run_dir / 'atm.pickle')
         print(f' pRT model saved to {run_dir / "atm.pickle"}')
     
-
+    ret = Retrieval(parameters, d_spec, pRT, run=run)
+    pickle_save(run_dir / 'ret.pickle', ret)
+        
 if args.prior_check:
     import matplotlib.pyplot as plt # type: ignore
     print('--> Prior predictive check...')
     
-    d_spec = pickle_load(run_dir / 'd_spec.pickle')
-    pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT, run=run)
+    # d_spec = pickle_load(run_dir / 'd_spec.pickle')
+    # pRT = pickle_load(run_dir / 'atm.pickle')
+    # ret = Retrieval(parameters, d_spec, pRT, run=run)
+    ret = pickle_load(run_dir / 'ret.pickle')
     ret.prior_check() # new function to plot the prior predictive check
     
 
