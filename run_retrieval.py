@@ -219,10 +219,12 @@ if args.retrieval:
     ret_start_time = time.time()
 
     ### Init retrieval object
-    d_spec = pickle_load(run_dir / 'd_spec.pickle')
-    pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT, run=run)
-    ret.n_live_points = 100
+    # d_spec = pickle_load(run_dir / 'd_spec.pickle')
+    # pRT = pickle_load(run_dir / 'atm.pickle')
+    # ret = Retrieval(parameters, d_spec, pRT, run=run)
+    ret = pickle_load(run_dir / 'ret.pickle')
+
+    ret.n_live_points = 200
     # ret.n_iter_before_update = 1
     # uncomment line below to run the retrieval
     ret.PMN_run()
@@ -242,10 +244,11 @@ if args.evaluation:
     print('--> Evaluation...')
 
     # Load the retrieval object
-    d_spec = pickle_load(run_dir / 'd_spec.pickle')
-    pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT, run=run)
-    
+    # d_spec = pickle_load(run_dir / 'd_spec.pickle')
+    # pRT = pickle_load(run_dir / 'atm.pickle')
+    # ret = Retrieval(parameters, d_spec, pRT, run=run)
+    ret = pickle_load(run_dir / 'ret.pickle')
+
     # print(d_spec)
     
     ret.evaluation = True
