@@ -58,7 +58,7 @@ class Retrieval:
         self.Cov = np.empty((self.d_spec.n_orders, self.d_spec.n_dets), dtype=object)
         self.mask_ij = np.ones((self.d_spec.n_orders, self.d_spec.n_dets, self.d_spec.n_pixels), dtype=bool)
         self.cov_kwargs = dict(
-                        trunc_dist   = 1.5, 
+                        trunc_dist   = 1, 
                         scale_GP_amp = True, 
                         max_separation = 20, 
         )

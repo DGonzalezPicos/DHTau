@@ -31,8 +31,8 @@ args = parser.parse_args()
 ## Define parameters
 free_params = {
     # GPs
-    'log_a': [(-1,0.5), r'$\log\ a$'], 
-    'log_l': [(-2,-1.2), r'$\log\ l$'], 
+    'log_a': [(-1,0.3), r'$\log\ a$'], 
+    'log_l': [(-2,-1.3), r'$\log\ l$'], 
 
     'log_g': [(2.0,5.0), r'$\log\ g$'], 
     # 'r_k'  : [(0.0, 3.0), r'$r_k$'], # veiling factor (0 for no veiling, can be > 1)

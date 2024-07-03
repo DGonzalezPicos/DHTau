@@ -212,17 +212,37 @@ class GaussianProcesses(Covariance):
         self.cov[w_ij] += GP_amp * np.exp(-(self.separation[w_ij])**2/(2*l**2))
         return self
 
-    def get_cholesky(self):
+    def get_cholesky(self, max_attempts=10, epsilon=1e-2):
         '''
         Get the Cholesky decomposition. Employs a banded 
         decomposition with scipy. 
-        '''
+        '''        
         self.cov = self.cov[(self.cov!=0).any(axis=1),:]
 
         # Compute banded Cholesky decomposition
+        for i in range(max_attempts):
+            try:
+                self.cov_cholesky = cholesky_banded(
+                    self.cov, lower=True, check_finite=False,
+                    )
+                # print(f' self.cov_chol.shape {self.cov_cholesky.shape}')
+
+                return self
+            except np.linalg.LinAlgError:
+                # Add a small number to the diagonal
+                # print(f'Cholesky decomposition failed, retrying with epsilon={epsilon}')
+                # print(f' self.cov.shape {self.cov.shape}')
+                # print(f' Min: {np.min(self.cov)} Max: {np.max(self.cov)} Median: {np.median(self.cov)}')
+                self.cov[0] *= (1 + epsilon)
+                epsilon *= 10
+                
         self.cov_cholesky = cholesky_banded(
-            self.cov, lower=True
+            self.cov, lower=True, 
+            overwrite_ab=False,
+            check_finite=False,
             )
+        delattr(self, 'cov')
+        return self
 
     def get_logdet(self):
         '''
