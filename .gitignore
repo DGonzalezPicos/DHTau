@@ -6,3 +6,5 @@
 atm_retrieval.egg-info
 retrieval_outputs/
 *.fits
+*Sphinx*
+phoenix.png

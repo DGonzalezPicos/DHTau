@@ -31,8 +31,8 @@ args = parser.parse_args()
 ## Define parameters
 free_params = {
     # GPs
-    'log_a': [(-1,0.5), r'$\log\ a$'], 
-    'log_l': [(-2,-1.2), r'$\log\ l$'], 
+    'log_a': [(-1,0.3), r'$\log\ a$'], 
+    'log_l': [(-2,-1.3), r'$\log\ l$'], 
 
     'log_g': [(2.0,5.0), r'$\log\ g$'], 
     # 'r_k'  : [(0.0, 3.0), r'$r_k$'], # veiling factor (0 for no veiling, can be > 1)
@@ -200,14 +200,17 @@ if args.pre_processing:
         pRT.pickle_save(run_dir / 'atm.pickle')
         print(f' pRT model saved to {run_dir / "atm.pickle"}')
     
-
+    ret = Retrieval(parameters, d_spec, pRT, run=run)
+    pickle_save(run_dir / 'ret.pickle', ret)
+        
 if args.prior_check:
     import matplotlib.pyplot as plt # type: ignore
     print('--> Prior predictive check...')
     
-    d_spec = pickle_load(run_dir / 'd_spec.pickle')
-    pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT, run=run)
+    # d_spec = pickle_load(run_dir / 'd_spec.pickle')
+    # pRT = pickle_load(run_dir / 'atm.pickle')
+    # ret = Retrieval(parameters, d_spec, pRT, run=run)
+    ret = pickle_load(run_dir / 'ret.pickle')
     ret.prior_check() # new function to plot the prior predictive check
     
 
@@ -216,10 +219,12 @@ if args.retrieval:
     ret_start_time = time.time()
 
     ### Init retrieval object
-    d_spec = pickle_load(run_dir / 'd_spec.pickle')
-    pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT, run=run)
-    ret.n_live_points = 100
+    # d_spec = pickle_load(run_dir / 'd_spec.pickle')
+    # pRT = pickle_load(run_dir / 'atm.pickle')
+    # ret = Retrieval(parameters, d_spec, pRT, run=run)
+    ret = pickle_load(run_dir / 'ret.pickle')
+
+    ret.n_live_points = 200
     # ret.n_iter_before_update = 1
     # uncomment line below to run the retrieval
     ret.PMN_run()
@@ -239,10 +244,11 @@ if args.evaluation:
     print('--> Evaluation...')
 
     # Load the retrieval object
-    d_spec = pickle_load(run_dir / 'd_spec.pickle')
-    pRT = pickle_load(run_dir / 'atm.pickle')
-    ret = Retrieval(parameters, d_spec, pRT, run=run)
-    
+    # d_spec = pickle_load(run_dir / 'd_spec.pickle')
+    # pRT = pickle_load(run_dir / 'atm.pickle')
+    # ret = Retrieval(parameters, d_spec, pRT, run=run)
+    ret = pickle_load(run_dir / 'ret.pickle')
+
     # print(d_spec)
     
     ret.evaluation = True

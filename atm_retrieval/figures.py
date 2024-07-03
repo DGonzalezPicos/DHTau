@@ -620,6 +620,8 @@ def fig_prior_check(ret, fig_name='prior_check.pdf'):
         sample_dict = dict(zip(ret.parameters.param_keys, sample))
         print(sample_dict)
         print(f' - log_L = {log_L:.1e}\n')
+        # print shape of covariance
+        print(f' ret.Cov[0,0].cov.shape = {ret.Cov[0,0].cov.shape}')
         m.append(ret.loglike.m) # store model
         if hasattr(ret.m_spec, 'veiling_model'):
             m_veiling.append(ret.m_spec.veiling_model) # store veiling model
