@@ -32,8 +32,8 @@ class Retrieval:
     
     # Pymultinest default parameters
     output_dir = 'retrieval_outputs'
-    n_live_points = 100 # >200 for accuracy, 100 for speed
-    evidence_tolerance = 5.0 # 0.5 for accuracy, 5.0 for speed
+    n_live_points = 200 # >200 for accuracy, 100 for speed
+    evidence_tolerance = 0.5 # 0.5 for accuracy, 5.0 for speed
     n_iter_before_update = int(n_live_points * 3)
     sampling_efficiency = 0.10 # 0.05 for accuracy, 0.10 for speed
     
@@ -58,12 +58,15 @@ class Retrieval:
         self.Cov = np.empty((self.d_spec.n_orders, self.d_spec.n_dets), dtype=object)
         self.mask_ij = np.ones((self.d_spec.n_orders, self.d_spec.n_dets, self.d_spec.n_pixels), dtype=bool)
         self.cov_kwargs = dict(
-                        trunc_dist   = 3, 
+                        trunc_dist   = 1.5, 
                         scale_GP_amp = True, 
                         max_separation = 20, 
         )
-        if 'log_l' in self.parameters.params.keys():
-            self.cov_kwargs['max_separation'] = self.cov_kwargs['trunc_dist'] * 10**self.parameters.param_priors['log_l'][1]
+        # if 'log_l' in self.parameters.params.keys():
+        #     self.cov_kwargs['max_separation'] = self.cov_kwargs['trunc_dist'] * 10**self.parameters.param_priors['log_l'][1]
+        # DGP (2024-07-03): Bring back the covariance fix to limit the size of the GP kernel
+        if 'log_l' in self.parameters.param_priors.keys(): # NEW: properly set the max_separation (before was fixed to 20, veeery slow)
+￼            self.cov_kwargs['max_separation'] = self.cov_kwargs['trunc_dist'] * 10**self.parameters.param_priors['log_l'][1]
 
         for i in range(self.d_spec.n_orders):
             for j in range(self.d_spec.n_dets):
@@ -154,7 +157,7 @@ class Retrieval:
             Prior=self.parameters, 
             n_dims=self.parameters.n_params, 
             outputfiles_basename=f'{self.run_dir}/pmn_', 
-            resume=False, 
+            resume=True, 
             verbose=True, 
             const_efficiency_mode=True, 
             sampling_efficiency=self.sampling_efficiency, 
