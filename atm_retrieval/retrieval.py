@@ -66,7 +66,7 @@ class Retrieval:
         #     self.cov_kwargs['max_separation'] = self.cov_kwargs['trunc_dist'] * 10**self.parameters.param_priors['log_l'][1]
         # DGP (2024-07-03): Bring back the covariance fix to limit the size of the GP kernel
         if 'log_l' in self.parameters.param_priors.keys(): # NEW: properly set the max_separation (before was fixed to 20, veeery slow)
-￼            self.cov_kwargs['max_separation'] = self.cov_kwargs['trunc_dist'] * 10**self.parameters.param_priors['log_l'][1]
+            self.cov_kwargs['max_separation'] = self.cov_kwargs['trunc_dist'] * 10**self.parameters.param_priors['log_l'][1]
 
         for i in range(self.d_spec.n_orders):
             for j in range(self.d_spec.n_dets):
