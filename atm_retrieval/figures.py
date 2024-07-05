@@ -132,7 +132,8 @@ def fig_PT(PT,
             P_phot = np.mean(p[photosphere])
             T_phot = np.mean(PT.temperature_envelopes[3][photosphere])
             T_phot_err = np.std(PT.temperature_envelopes[3][photosphere])
-            # print(f' - Photospheric temperature: {T_phot:.1f} +- {T_phot_err:.1f} K')
+            print(f' - Photospheric temperature: {T_phot:.1f} +- {T_phot_err:.1f} K')
+
             # make empty marker
             ax.scatter(T_phot, P_phot, c='black',
                         marker='o', 
@@ -354,7 +355,7 @@ def simple_cornerplot(posterior,
                 for q_i in Q]
             )
         
-        fontsize = 14
+        fontsize = 12
         color = 'green'
         smooth = 1.0
         # plot cornerplot
@@ -406,12 +407,15 @@ def simple_cornerplot(posterior,
             ax[i,i].spines['top'].set_visible(False)
             ax[i,i].spines['right'].set_visible(False)
             
+        plt.margins(0.5,0.5)
         if fig_name is not None:
             fig.savefig(fig_name)
             print(f' - Saved {fig_name}')
             plt.close(fig)
             
         return fig
+
+
     
 def fig_bestfit_model(d_spec,
                       m_spec,
@@ -623,6 +627,228 @@ def fig_bestfit_model(d_spec,
     # else:
     return ax_spec, ax_res
 
+        
+def fig_bestfit_model_order(d_spec,
+                      m_spec,
+                      LogLike,
+                      Cov=None,
+                      xlabel=r'Wavelength (nm)',
+                      bestfit_color='C0',
+                      ax_spec=None,
+                      ax_res=None,
+                      flux_factor=1.0,
+                      fig_name=None,
+                      evaluation=False,
+                      order = [0],
+                      **kwargs):
+    
+    if (ax_spec is None) and (ax_res is None):
+        # Create a new figure
+        is_new_fig = True
+        n_orders = len(order) #d_spec.n_orders
+
+        fig, ax = plt.subplots(
+            figsize=(8,2*n_orders*2), nrows=n_orders*3, 
+            gridspec_kw={'hspace':0, 'height_ratios':[1,1/3,1/5]*n_orders, 
+                        'left':0.13, 'right':0.95, 
+                        'top':(1-0.02*7/(n_orders*3)), 
+                        'bottom':0.015*7/(n_orders*3), 
+                        }
+            )
+    else:
+        is_new_fig = False
+    if flux_factor == 1.0:
+        ylabel_spec = r'$F_\lambda$'+'\n'+r'$(\mathrm{erg\ s^{-1}\ cm^{-2}\ nm^{-1}})$'
+    else:
+        ylabel_spec = r'$F_\lambda$'+'\n'+ f'$(\mathrm{{erg\ s^{{-1}}\ cm^{{-2}}\ nm^{{-1}}}}\cdot 10^{{-{np.log10(flux_factor):.0f}}})$'
+   
+    # Use the same ylim, also for multiple axes
+    ylim_spec = (np.nanmean(d_spec.flux)-4*np.nanstd(d_spec.flux), 
+                 np.nanmean(d_spec.flux)+4*np.nanstd(d_spec.flux)
+                )
+    ylim_res = (1/3*(ylim_spec[0]-np.nanmean(d_spec.flux)), 
+                1/3*(ylim_spec[1]-np.nanmean(d_spec.flux))
+                )
+    # apply flux factor
+    ylim_spec = (ylim_spec[0]*flux_factor, ylim_spec[1]*flux_factor)
+    ylim_res = (ylim_res[0]*flux_factor, ylim_res[1]*flux_factor)
+
+
+    lw = kwargs.get('lw', 0.5)
+    for i in order:
+
+        if is_new_fig:
+            ii = i - order[0]
+            # Spectrum and residual axes
+            ax_spec = ax[ii*3]
+            ax_res  = ax[ii*3+1]
+
+            # Remove the temporary axis
+            ax[ii*3+2].remove()
+
+            # Use a different xlim for the separate figures
+            xlim = (d_spec.wave[i,:].min()-0.5, 
+                    d_spec.wave[i,:].max()+0.5)
+        else:
+            xlim = (d_spec.wave.min()-0.5, 
+                    d_spec.wave.max()+0.5)
+
+        ax_spec.set(xlim=xlim, xticks=[], 
+                    # ylim=ylim_spec,
+                    )
+        ax_res.set(xlim=xlim, ylim=ylim_res)
+
+        for j in range(d_spec.n_dets):
+        
+            x = d_spec.wave[i,j]
+            mask_ij = d_spec.mask_isfinite[i,j]
+            
+            if np.sum(mask_ij) == 0:
+                continue
+            # if mask_ij.any():
+            # Show the observed and model spectra
+            # Cov = None
+            if Cov is not None:
+                if hasattr(Cov, 'diag'):
+                    err = np.sqrt(Cov.diag[i,j]) * LogLike.beta[i,j] * flux_factor
+                else:
+                    # print(f' - Calculating error from dense covariance matrix order, det = {i}, {j}')
+                    err = np.sqrt(np.diag(Cov[i,j].get_dense_cov())) * LogLike.beta[i,j] * flux_factor #
+                    # print(f' shape Cov[i,j].cov = {Cov[i,j].cov.shape}')
+                    # print(f' shape Cov[i,j].cov[0] = {Cov[i,j].cov[0].shape}')  
+                    # err = np.sqrt(Cov[i,j].cov[0]) * LogLike.beta[i,j] * flux_factor
+                    
+            else:
+                # err = d_spec.err[i,j,mask_ij] * LogLike.beta[i,j] * flux_factor
+                err = np.ones_like(d_spec.flux[i,j,mask_ij]) * 0.01 * flux_factor # avoid calculating error for speed
+            
+            wave = d_spec.wave[i,j,mask_ij]
+            flux = d_spec.flux[i,j,mask_ij] * flux_factor
+            flux_full = d_spec.flux[i,j,:] * flux_factor
+            err_full = np.nan * np.ones_like(flux_full)
+                        
+            mean_err = np.mean(err)
+            err_full[mask_ij] = err
+            
+            m_flux_ij = m_spec.flux[i,j,mask_ij]
+
+            
+            ax_spec.plot(
+                x, flux_full,
+                c='k', lw=lw, label='Data'
+                )
+            ax_spec.fill_between(
+                x, flux_full-err_full, flux_full+err_full, 
+                fc='k', alpha=0.4, ec='none',
+                )
+
+            if hasattr(LogLike, 'chi_squared_reduced'):
+                label = 'Best-fit model ' + \
+                        r'$(\chi^2_\mathrm{red}$$=' + \
+                        '{:.2f}'.format(LogLike.chi_squared_reduced) + \
+                        r')$'
+            else:
+                label = 'Best-fit model'
+                    
+            f = LogLike.f[:,i,j]
+            if evaluation:
+                print(f' - beta ({i},{j}) = {LogLike.beta[i,j]:.1f}')
+            
+            # M = LogLike.M[i,j]
+            # linear_model = M * f[:,None] * flux_factor
+            # set ~mask to np.nan on last axis
+            # linear_model[:,~mask_ij] = np.nan
+            
+            # model = np.sum(linear_model, axis=0) # full fitted linear model
+            # model = f * m_spec.flux[i,j] * flux_factor
+            # model = f @ m_spec.flux_spline[:,i,j] if m_spec.N_knots > 1 else f * m_spec.flux[i,j]
+            # model *= flux_factor
+            model = LogLike.m[i,j,:] * flux_factor
+            # model_spec = np.sum(LogLike.f[:N_knots,i,j] * LogLike.M[:N_knots,i,j,:], axis=0) # TODO:
+            # model_veiling = np.sum(LogLike.f[-1,i,j] * LogLike.M[-1,i,j,:], axis=0)
+            if m_spec.N_knots > 1:
+                    
+                # m_flux_ij_spline = SplineModel(N_knots=m_spec.N_knots, spline_degree=3)(m_flux_ij)
+                
+                # replace single-component matrix with multi-component matrix
+                M_ij = SplineModel(N_knots=m_spec.N_knots, spline_degree=3)(m_flux_ij)
+            else:
+                M_ij = m_spec.flux[i,j,mask_ij][np.newaxis,:]
+            
+            model[~mask_ij] = np.nan
+            # ax_spec.plot(x, model, lw=2*lw, label=label, color=bestfit_color)
+            N_veiling = getattr(m_spec, 'N_veiling', 0)
+            if N_veiling > 0:
+                # build linear model with veiling components
+                N_pRT = len(f) - N_veiling
+                M_ij = np.concatenate([M_ij, m_spec.M_veiling[:,mask_ij]], axis=0) # add veiling components
+                
+                # print(f' - N_pRT = {N_pRT}, N_veiling = {N_veiling}')
+                # print(f' M_ij.shape = {M_ij.shape}, f.shape = {f.shape}')
+                m_veiling, m_pRT = (np.nan * np.ones_like(x) for _ in range(2))
+                # m_veiling[mask_ij] = f[N_pRT:] @ M_ij[N_pRT:]
+                # m_pRT[mask_ij] = f[:N_pRT] @ M_ij[:N_pRT]
+                m_pRT[mask_ij] = f[:N_pRT] @ M_ij[:N_pRT]
+                m_veiling[mask_ij] = f[N_pRT:] @ M_ij[N_pRT:]
+                ax_spec.plot(x, m_veiling, lw=lw, label='Veiling', color='magenta')
+                ax_spec.plot(x, m_pRT, lw=lw, label='pRT', color='navy')
+            if hasattr(m_spec, 'veiling_model'):
+                try: 
+                    # if we multiply the veiling model with the mean amplitude of the flux we get the veiling flux
+                    # for now just show the veiling factor
+                    veiling_factor = m_spec.veiling_model[i,j,:]
+                    veiling_flux = veiling_factor * np.mean(f)
+                    ax_spec.plot(x, veiling_factor, lw=lw, ls=':', 
+                                 label='Veiling factor' if (i==0 and j==0) else None,
+                                 color='magenta')
+                    ax_spec.plot(x, m_pRT, lw=lw, 
+                                 label='pRT' if (i==0 and j==0) else None,
+                                 color='navy')
+                except:
+                    pass
+
+            # Plot the residuals
+            res_ij = flux_full - model
+            res_ij[~mask_ij] = np.nan
+            ax_res.plot(x, res_ij, c='k', lw=lw)
+            ax_res.plot(
+                [x.min(), x.max()], 
+                [0,0], c=bestfit_color, lw=1
+            )
+
+            ax_res.errorbar(
+                wave.min()-0.2, 0, yerr=1*mean_err, 
+                fmt='none', lw=1, ecolor='k', capsize=2, color='k', 
+                )
+
+            if i==0 and j==0:
+                ax_spec.legend(
+                    loc='upper right', ncol=3, fontsize=11, handlelength=1, 
+                    framealpha=0.7, handletextpad=0.3, columnspacing=0.8,
+                    frameon=False,
+                    )
+
+        # Set the labels for the final axis
+        ax_spec.set(ylabel=ylabel_spec)
+        ax_res.set(xlabel=xlabel, ylabel='Res.')
+
+    #Plot only CO line order
+    # ax_spec.set_xlim(2300,2400)
+
+    if fig_name is not None:
+        plt.savefig(fig_name)
+        print(f' - Saved {fig_name}')
+        plt.close()
+
+    # if fig_name is not None:
+        # with PdfPages(fig_name) as pdf:\
+        #     plt.savefig(fig_name)
+        
+        # print(f' - Saved {fig_name}')
+        # # plt.close()
+        
+    # else:
+    return ax_spec, ax_res
 
 def fig_prior_check(ret, fig_name='prior_check.pdf'):
     

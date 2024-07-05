@@ -230,7 +230,7 @@ class Retrieval:
         
         fig_label = 'final' if self.evaluation else f'{self.cb_count}'
 
-        fig = plt.figure(figsize=(22,24))
+        fig = plt.figure(figsize=(25,25))
         fig = figs.simple_cornerplot(posterior,
                                 labels, 
                                 bestfit_params=bestfit_params,
@@ -319,21 +319,21 @@ class Retrieval:
             #     bestfit_color=self.bestfit_color,
             #     fig_name=self.run_dir / f'plots/retrieval_bestfit_model_{fig_label}.pdf',
             #     )
-            # figs.fig_PT(
-            #         PT=self.pRT_model.PT, 
-            #         # xlim=(x1,x2), 
-            #         bestfit_color=self.bestfit_color,
-            #         envelopes_color=self.bestfit_color,
-            #         int_contr_em_color='red',
-            #         fig_name=self.run_dir / f'plots/retrieval_PT_profile_{fig_label}.pdf',
-            #         )
+            figs.fig_PT(
+                    PT=self.pRT_model.PT, 
+                    # xlim=(x1,x2), 
+                    bestfit_color=self.bestfit_color,
+                    envelopes_color=self.bestfit_color,
+                    int_contr_em_color='red',
+                    fig_name=self.run_dir / f'plots/retrieval_PT_profile_{fig_label}.pdf',
+                    )
             
-            l, b, w, h = [0.32,3.42,0.65,0.20]
-            ax_res_dim  = [l, b*(h+0.03), w, 0.97*h/5]
-            ax_spec_dim = [l, ax_res_dim[1]+ax_res_dim[3], w, 4*0.97*h/5]
+            # l, b, w, h = [0.32,3.42,0.65,0.20]
+            # ax_res_dim  = [l, b*(h+0.03), w, 0.97*h/5]
+            # ax_spec_dim = [l, ax_res_dim[1]+ax_res_dim[3], w, 4*0.97*h/5]
 
-            is_new_fig = False
-            n_orders = self.d_spec.n_orders
+            # is_new_fig = False
+            # n_orders = self.d_spec.n_orders
 
             # fig, ax = plt.figure(
             #     figsize=(10,2.5*n_orders*2),# nrows=n_orders*3, 
@@ -345,7 +345,7 @@ class Retrieval:
                 # )
 
 
-            figs.fig_bestfit_model(
+            figs.fig_bestfit_model_order(
                 self.d_spec, 
                 self.m_spec,
                 self.loglike,
@@ -357,6 +357,7 @@ class Retrieval:
                 bestfit_color=self.bestfit_color,
                 fig_name=self.run_dir / f'plots/retrieval_bestfit_spec.pdf',
                 evaluation=True,
+                order= [4]
                 )
 
     def Testing(self, 

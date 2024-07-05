@@ -9,7 +9,7 @@ from atm_retrieval.retrieval import Retrieval
 from atm_retrieval.utils import pickle_load, pickle_save
 
 
-run = 'testing_015'
+run = 'testing_030'
 run_dir = pathlib.Path(f'retrieval_outputs/{run}')
 
 parameters_file = run_dir / 'parameters.json'
@@ -61,12 +61,12 @@ def plot_order_det(order, det, species, m_spec_0, m_spec_1, d_spec, out_fig):
     m_1 = m_spec_1.flux[order, det] / np.nanmean(m_spec_1.flux[order, det])
     d  = d_spec.flux[order, det] / np.nanmean(d_spec.flux[order, det])
 
-    fig, ax = plt.subplots(3, 1, figsize=(14, 6),
+    fig, ax = plt.subplots(3, 1, figsize=(10, 4),
                         sharex=True,
-                        gridspec_kw={'left': 0.05, 
+                        gridspec_kw={'left': 0.08, 
                                         'right': 0.98,
                                         'top': 0.97,
-                                        'bottom': 0.1, 
+                                        'bottom': 0.13, 
                                         'hspace': 0.1,})
 
     # top panel: data and model
@@ -98,6 +98,7 @@ def plot_spec_order_det(order, det, species, m_spec, d_spec, out_fig):
     # print(d_spec.wave[order, 0])
     # print(d_spec.wave[order, :])
 
+
     if det == ':':
         wave = d_spec.wave[order, :].flatten()
         m_0 = (m_spec.flux[order, :] / np.nanmean(m_spec.flux[order, :])).flatten()
@@ -111,11 +112,12 @@ def plot_spec_order_det(order, det, species, m_spec, d_spec, out_fig):
 
     fig, ax = plt.subplots(2, 1, figsize=(14, 6),
                         sharex=True,
-                        gridspec_kw={'left': 0.05, 
+                        gridspec_kw={'left': 0.06, 
                                         'right': 0.98,
                                         'top': 0.97,
                                         'bottom': 0.1, 
-                                        'hspace': 0.1,})
+                                        'hspace': 0.1,
+                                        'height_ratios':[3/4,1/4]})
 
     # top panel: data and model
     ax[0].plot(wave, d, label='data', color='k', alpha=0.9, lw=2)
@@ -143,7 +145,7 @@ def plot_spec_order_det(order, det, species, m_spec, d_spec, out_fig):
 
 
 # out_fig = run_dir / f'plots/species_contribution_{species}.pdf'
-out_fig = run_dir / f'plots/bestfit_spec_order_det.pdf'
+out_fig = run_dir / f'plots/bestfit_spec_4.pdf'
 
 with PdfPages(out_fig) as pdf:\
 
@@ -158,7 +160,8 @@ with PdfPages(out_fig) as pdf:\
     #         plt.close()
 
 
-
+# 3,2 three broadened peaks
+# 1,1 first Ca peak
 
 print(f'Plots saved to {out_fig}')
 
